@@ -7,8 +7,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // Allow your WordPress site
 const allowedOrigins = [
-  "https://dontturnitinyet.com/",              // REPLACE with your actual domain
-  "https://dontturnitinyet.com/",          // REPLACE with your actual domain
+  "https://dontturnitinyet.com",
+  "https://www.dontturnitinyet.com",
   "http://localhost:3000",
   "http://localhost:5173"
 ];
@@ -178,4 +178,5 @@ async function callOpenAI(messages) {
   }
   
   return content;
+
 }
