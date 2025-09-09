@@ -157,7 +157,7 @@ function escapeQuotes(str) {
   return str.replace(/"/g, '\\"');
 }
 
-async function callOpenAI(messages) {
+async function callOpenAI(messages, temperature = 0.3) {
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -167,7 +167,7 @@ async function callOpenAI(messages) {
     body: JSON.stringify({
       model: "gpt-4o-mini", // Cost-efficient model
       messages: messages,
-      temperature: 0.3,
+      temperature: temperature,
       max_tokens: 800
     })
   });
