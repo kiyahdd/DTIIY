@@ -176,55 +176,65 @@ Provide exact short phrases to replace.`;
 }
 
 async function humanizeWithOpenAI(text) {
-  const systemPrompt = `You are an expert at rewriting AI-generated text to sound like genuine student writing that will score UNDER 30% on AI detectors while remaining academically appropriate.
+  const systemPrompt = `You are an expert at rewriting AI-generated text to sound completely human and score UNDER 25% on ANY AI detector while remaining academically appropriate.
 
-CRITICAL MISSION: Transform this text to score under 30% on AI detectors while keeping it suitable for academic submission.
+ULTRA-CRITICAL MISSION: Transform this text so aggressively that it WILL score under 25% on AI detectors.
 
-REQUIRED CHANGES:
-- Add natural contractions where appropriate (it's, don't, won't, can't, we're, they've)
-- Replace formal/corporate words with natural academic language
-- Vary sentence lengths dramatically (mix short, medium, and longer sentences)
-- Add subtle natural flow words (also, plus, but, so, and, though)
-- Use more conversational academic tone
-- Include some natural hesitation/qualification (seems like, appears to, tends to)
-- Break perfect grammar patterns with natural variations
-- Remove overly formal transitions
-- Make it sound like a smart student wrote it naturally, not AI
+MANDATORY REQUIREMENTS (DO ALL OF THESE):
+1. Use contractions EVERYWHERE possible (it's, don't, won't, can't, we're, they've, you're, I'm, there's, here's)
+2. Replace ALL formal words with casual academic equivalents
+3. Add natural hedging words (kind of, sort of, seems like, appears to, tends to, probably)
+4. Mix sentence lengths DRAMATICALLY (very short. Medium ones. And really long complex sentences that flow naturally)
+5. Use conversational connectors (but, so, and, plus, also, though, since)
+6. Add subtle personality (I think, in my opinion, it feels like, personally)
+7. Break some formal grammar rules naturally
+8. Remove ALL corporate buzzwords completely
+9. Make it sound like casual academic conversation, not formal writing
 
-KEY REPLACEMENTS:
-- utilize → use
-- leverage → use/take advantage of  
-- facilitate → help/enable
-- implement → set up/establish
-- optimize → improve
-- enhance → improve/strengthen
-- furthermore → also/additionally  
+AGGRESSIVE REPLACEMENTS (USE ALL):
+- utilize/utilizes → use/uses
+- leverage → use/take advantage of
+- facilitate → help/make easier
+- implement → set up/put in place
+- optimize → improve/make better
+- enhance → strengthen/improve
+- furthermore → also/plus/and
 - however → but/though
-- therefore → so/thus
-- in conclusion → overall/in the end
-- significant → important/major
-- comprehensive → thorough/complete
+- therefore → so/that's why
+- in conclusion → overall/basically/in the end
+- significant → important/big/major
+- comprehensive → complete/thorough
+- substantial → major/big
+- establish → set up/create
+- demonstrate → show
+- indicate → suggest/show
+- various → different/many
+- numerous → many/lots of
+- acquire → get/gain
+- maintain → keep
+- conduct → do/carry out
+- obtain → get
 
-TARGET: Sound like natural student writing - academic but conversational, not robotic or overly formal.`;
+TARGET: Must sound like a smart but casual student wrote it naturally. Think conversational academic writing, NOT formal essay style.`;
   
-  const userPrompt = `Rewrite this to sound like genuine student writing that will score UNDER 30% on AI detectors. Keep it academic but natural:
+  const userPrompt = `Rewrite this to score UNDER 25% on AI detectors. Be VERY aggressive with casual language while keeping it academic:
 
 "${escapeQuotes(text)}"
 
-Requirements:
-- Use contractions naturally
-- Replace corporate buzzwords with normal words
-- Vary sentence structures  
-- Sound like a real student wrote it
-- Keep academic tone but make it conversational
-- Remove AI-like formal patterns
+MUST include:
+- Heavy use of contractions throughout
+- Casual academic language (no corporate words)
+- Natural flow and personality
+- Varied sentence structures
+- Conversational tone
+- Natural hedging/qualification words
 
-Return ONLY the rewritten text.`;
+Make it sound like actual student writing, not AI. Return ONLY the rewritten text.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt }
-  ], 0.7); // Balanced creativity
+  ], 0.8); // Higher creativity for more human variation
 
   return result.trim();
 }
