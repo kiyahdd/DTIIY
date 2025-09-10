@@ -80,8 +80,11 @@ app.listen(PORT, () => {
 
 // ---------- OpenAI Helper Functions ----------
 
+// Global tracking of suggested phrases to prevent re-flagging
+let suggestedPhrases = new Set();
+
 async function analyzeWithOpenAI(text) {
-  const systemPrompt = `You are a strict AI detector that identifies text patterns typical of AI generation. Focus on catching formal language that sounds robotic rather than naturally written.
+  const systemPrompt = `You are a strict AI detector that identifies text patterns typical of AI generation.
 
 Return STRICT JSON with these exact keys:
 - score (0-100 integer, where higher = more AI-like)
@@ -89,47 +92,27 @@ Return STRICT JSON with these exact keys:
 - flags (array of objects with: issue, phrase, explanation, suggestedFix)
 - proTip (one helpful sentence)
 
-Score HIGH (60-85) for:
-- Corporate buzzwords (utilize, leverage, optimize, facilitate, implement)
-- Overly formal transitions (furthermore, however, therefore, in conclusion)
+Flag HIGH (60-85) for:
+- Corporate buzzwords: utilize, leverage, optimize, facilitate, implement, enhance
+- Formal transitions: furthermore, however, therefore, in conclusion
+- Academic phrases: comprehensive, substantial, significant, various, numerous
 - Perfect grammar with zero contractions
 - Repetitive sentence structures
-- Generic academic language without personality
-- Robotic flow and phrasing
 
-Score MEDIUM (35-59) for:
-- Some formal language but with natural elements
-- Mix of contractions and formal tone
-- Decent variety but some stiff patterns
+For suggestedFix, provide casual alternatives:
+- utilize/leverage → use
+- cutting-edge technologies → new tech  
+- advanced technologies → latest tools
+- optimize → work better
+- facilitate → help with
+- comprehensive → complete
+- implement → set up`;
 
-Score LOW (0-34) for:
-- Natural use of contractions
-- Conversational academic tone
-- Varied sentence structures
-- Personal voice coming through
-- Flows naturally
-
-CRITICAL: For suggestedFix, provide ONLY casual, simple alternatives that sound like natural speech:
-- leverage cutting-edge technologies → use new tech
-- advanced technologies → latest tools  
-- comprehensive solutions → complete ways
-- optimize efficiency → work better
-- facilitate collaboration → help teamwork
-
-Never suggest formal academic language in fixes. Keep suggestions to 1-3 casual words.`;
-
-  const userPrompt = `Analyze this text for AI-like patterns. Focus on overly formal language that sounds robotic:
+  const userPrompt = `Analyze this text for AI patterns:
 
 Text: "${escapeQuotes(text)}"
 
-Look for:
-- Corporate buzzwords that need casual replacements
-- Lack of natural contractions
-- Overly perfect/formal grammar
-- Repetitive sentence patterns
-- Generic academic language
-
-For each flag, provide simple casual replacements (1-3 words) that sound natural.`;
+Focus on formal corporate language that sounds robotic.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
@@ -143,14 +126,9 @@ For each flag, provide simple casual replacements (1-3 words) that sound natural
     console.error("JSON parse failed:", parseError);
     parsed = {
       score: 65,
-      reasoning: "Could not parse AI response. Text likely contains formal patterns typical of AI generation.",
-      flags: [{
-        issue: "Analysis Error", 
-        phrase: "analysis failed",
-        explanation: "Technical issue occurred during analysis.",
-        suggestedFix: "couldn't check this"
-      }],
-      proTip: "Try using more natural language and contractions."
+      reasoning: "Could not parse AI response.",
+      flags: [],
+      proTip: "Try using more natural language."
     };
   }
 
@@ -158,31 +136,30 @@ For each flag, provide simple casual replacements (1-3 words) that sound natural
   parsed.score = Math.max(0, Math.min(100, parseInt(parsed.score) || 60));
   if (!Array.isArray(parsed.flags)) parsed.flags = [];
   
-  // Filter flags for actual replaceable phrases and ensure suggestions are casual
+  // Filter out flags for phrases we previously suggested
   parsed.flags = parsed.flags.filter(flag => {
-    const phrase = (flag.phrase || '').trim();
-    const fix = (flag.suggestedFix || '').trim();
+    const phrase = (flag.phrase || '').trim().toLowerCase();
     
-    // Reject suggestions that are still formal/academic
-    const formalWords = ['advanced', 'technologies', 'comprehensive', 'solutions', 'facilitate', 'optimize', 'implement', 'enhance', 'utilize', 'leverage'];
-    const containsFormalWords = formalWords.some(word => fix.toLowerCase().includes(word));
+    // Don't flag anything we previously suggested
+    const wasPreviouslySuggested = Array.from(suggestedPhrases).some(suggested => 
+      phrase.includes(suggested.toLowerCase()) || suggested.toLowerCase().includes(phrase)
+    );
     
-    return phrase.length > 0 && 
+    return !wasPreviouslySuggested && 
+           phrase.length > 0 && 
            phrase.length < 50 &&
-           phrase.split(' ').length <= 4 &&
-           fix.length > 0 && 
-           fix.length < 30 &&
-           fix.split(' ').length <= 3 &&
-           phrase !== 'N/A' && 
-           fix !== '—' &&
-           !containsFormalWords &&
-           !fix.toLowerCase().includes('try') &&
-           !fix.toLowerCase().includes('consider') &&
-           !fix.toLowerCase().includes('should');
+           phrase !== 'n/a';
   });
   
-  if (!parsed.reasoning) parsed.reasoning = "Analysis completed - found typical AI writing patterns.";
-  if (!parsed.proTip) parsed.proTip = "Use more natural language and contractions to sound human.";
+  // Track new suggestions to prevent future flagging
+  parsed.flags.forEach(flag => {
+    if (flag.suggestedFix && flag.suggestedFix !== '—') {
+      suggestedPhrases.add(flag.suggestedFix.trim().toLowerCase());
+    }
+  });
+  
+  if (!parsed.reasoning) parsed.reasoning = "Analysis completed.";
+  if (!parsed.proTip) parsed.proTip = "Use more natural language and contractions.";
   
   return parsed;
 }
