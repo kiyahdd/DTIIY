@@ -81,7 +81,7 @@ app.listen(PORT, () => {
 // ---------- OpenAI Helper Functions ----------
 
 async function analyzeWithOpenAI(text) {
-  const systemPrompt = `You are an AI detector that identifies text that sounds artificial or generated. Your job is to be STRICT and catch AI-like patterns that would trigger detection tools.
+  const systemPrompt = `You are a strict AI detector that identifies text patterns typical of AI generation. Focus on catching formal language that sounds robotic rather than naturally written.
 
 Return STRICT JSON with these exact keys:
 - score (0-100 integer, where higher = more AI-like)
@@ -89,28 +89,40 @@ Return STRICT JSON with these exact keys:
 - flags (array of objects with: issue, phrase, explanation, suggestedFix)
 - proTip (one helpful sentence)
 
-For flags, ONLY include specific words/phrases from the text that can be directly replaced with better alternatives. The "phrase" should be actual text from the input, and "suggestedFix" should be a single word or short phrase replacement.
-
 Score HIGH (60-85) for:
-- Corporate buzzwords (utilize, leverage, optimize, facilitate, implement, etc.)
-- Formal transitions (furthermore, however, therefore, in conclusion)
-- Perfect grammar with no contractions
+- Corporate buzzwords (utilize, leverage, optimize, facilitate, implement)
+- Overly formal transitions (furthermore, however, therefore, in conclusion)
+- Perfect grammar with zero contractions
 - Repetitive sentence structures
-- Overly academic language
-- Generic statements without personality
+- Generic academic language without personality
+- Robotic flow and phrasing
 
-Keep JSON valid. No extra text outside the JSON.`;
+Score MEDIUM (35-59) for:
+- Some formal language but with natural elements
+- Mix of contractions and formal tone
+- Decent variety but some stiff patterns
 
-  const userPrompt = `Analyze this text for AI-like characteristics. Focus on specific replaceable words/phrases that make it sound robotic:
+Score LOW (0-34) for:
+- Natural use of contractions
+- Conversational academic tone
+- Varied sentence structures
+- Personal voice coming through
+- Flows naturally
+
+For flags, provide exact 1-4 word phrases that can be replaced with more natural alternatives.`;
+
+  const userPrompt = `Analyze this text for AI-like patterns. Focus on overly formal language that sounds robotic:
 
 Text: "${escapeQuotes(text)}"
 
-For each flag, provide:
-1. The exact phrase from the text (must be 1-4 words)
-2. A natural, casual replacement that fits the context
-3. Clear explanation why the original sounds AI-generated
+Look for:
+- Corporate buzzwords that need casual replacements
+- Lack of natural contractions
+- Overly perfect/formal grammar
+- Repetitive sentence patterns
+- Generic academic language
 
-Be strict - most AI-generated text should score 50+ unless it's genuinely casual and human-like.`;
+Provide exact short phrases to replace.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
@@ -124,14 +136,14 @@ Be strict - most AI-generated text should score 50+ unless it's genuinely casual
     console.error("JSON parse failed:", parseError);
     parsed = {
       score: 65,
-      reasoning: "Could not parse AI response. Using fallback analysis based on detected patterns.",
+      reasoning: "Could not parse AI response. Text likely contains formal patterns typical of AI generation.",
       flags: [{
         issue: "Analysis Error", 
         phrase: "analysis failed",
         explanation: "Technical issue occurred during analysis.",
-        suggestedFix: "couldn't analyze this"
+        suggestedFix: "couldn't check this"
       }],
-      proTip: "Try rewriting in a more casual, conversational tone."
+      proTip: "Try using more natural language and contractions."
     };
   }
 
@@ -139,12 +151,11 @@ Be strict - most AI-generated text should score 50+ unless it's genuinely casual
   parsed.score = Math.max(0, Math.min(100, parseInt(parsed.score) || 60));
   if (!Array.isArray(parsed.flags)) parsed.flags = [];
   
-  // Filter out flags that aren't actual single word/phrase replacements
+  // Filter flags for actual replaceable phrases
   parsed.flags = parsed.flags.filter(flag => {
     const phrase = (flag.phrase || '').trim();
     const fix = (flag.suggestedFix || '').trim();
     
-    // Must be short, replaceable phrases
     return phrase.length > 0 && 
            phrase.length < 50 &&
            phrase.split(' ').length <= 4 &&
@@ -155,55 +166,65 @@ Be strict - most AI-generated text should score 50+ unless it's genuinely casual
            fix !== '—' &&
            !fix.toLowerCase().includes('try') &&
            !fix.toLowerCase().includes('consider') &&
-           !fix.toLowerCase().includes('should') &&
-           !fix.toLowerCase().includes('make sure');
+           !fix.toLowerCase().includes('should');
   });
   
-  if (!parsed.reasoning) parsed.reasoning = "Analysis completed with standard AI detection patterns.";
-  if (!parsed.proTip) parsed.proTip = "Write like you're talking to a friend - casual and natural!";
+  if (!parsed.reasoning) parsed.reasoning = "Analysis completed - found typical AI writing patterns.";
+  if (!parsed.proTip) parsed.proTip = "Use more natural language and contractions to sound human.";
   
   return parsed;
 }
 
 async function humanizeWithOpenAI(text) {
-  const systemPrompt = `You are an expert at rewriting AI-generated text to sound completely human and pass AI detection tools with a score UNDER 30%.
+  const systemPrompt = `You are an expert at rewriting AI-generated text to sound like genuine student writing that will score UNDER 30% on AI detectors while remaining academically appropriate.
 
-CRITICAL MISSION: Transform this text so dramatically that it will score under 30% on AI detectors while keeping the core meaning intact.
+CRITICAL MISSION: Transform this text to score under 30% on AI detectors while keeping it suitable for academic submission.
 
 REQUIRED CHANGES:
-- Replace ALL formal words with casual alternatives (utilize → use, facilitate → help, implement → set up)
-- Add contractions everywhere possible (it is → it's, do not → don't, will not → won't)
-- Mix sentence lengths dramatically (short, medium, long)
-- Add filler words and natural speech patterns (like, you know, basically, pretty much)
-- Use informal transitions (but, so, and, plus, also instead of however, furthermore, therefore)
-- Add personal touches and casual expressions
-- Break some grammar rules naturally (end sentences with prepositions, use sentence fragments)
-- Include casual interjections and natural flow
-- Make it sound like someone actually talking, not writing formally
+- Add natural contractions where appropriate (it's, don't, won't, can't, we're, they've)
+- Replace formal/corporate words with natural academic language
+- Vary sentence lengths dramatically (mix short, medium, and longer sentences)
+- Add subtle natural flow words (also, plus, but, so, and, though)
+- Use more conversational academic tone
+- Include some natural hesitation/qualification (seems like, appears to, tends to)
+- Break perfect grammar patterns with natural variations
+- Remove overly formal transitions
+- Make it sound like a smart student wrote it naturally, not AI
 
-TARGET: The rewrite should be at LEAST 70% different in style and word choice while maintaining the same core message.
+KEY REPLACEMENTS:
+- utilize → use
+- leverage → use/take advantage of  
+- facilitate → help/enable
+- implement → set up/establish
+- optimize → improve
+- enhance → improve/strengthen
+- furthermore → also/additionally  
+- however → but/though
+- therefore → so/thus
+- in conclusion → overall/in the end
+- significant → important/major
+- comprehensive → thorough/complete
 
-NEVER keep formal academic language. NEVER use corporate buzzwords. Make it sound like a real person wrote it naturally.`;
+TARGET: Sound like natural student writing - academic but conversational, not robotic or overly formal.`;
   
-  const userPrompt = `Transform this text to sound genuinely human-written and score under 30% on AI detectors. Make it casual, natural, and completely different in style:
+  const userPrompt = `Rewrite this to sound like genuine student writing that will score UNDER 30% on AI detectors. Keep it academic but natural:
 
 "${escapeQuotes(text)}"
 
 Requirements:
-- Use contractions extensively 
-- Replace formal words with casual ones
-- Vary sentence lengths dramatically
-- Add natural filler words
-- Sound conversational, not academic
-- Break traditional writing rules naturally
-- Make it sound like real human speech
+- Use contractions naturally
+- Replace corporate buzzwords with normal words
+- Vary sentence structures  
+- Sound like a real student wrote it
+- Keep academic tone but make it conversational
+- Remove AI-like formal patterns
 
-Return ONLY the rewritten text with no explanations.`;
+Return ONLY the rewritten text.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt }
-  ], 0.8); // Higher temperature for more creativity
+  ], 0.7); // Balanced creativity
 
   return result.trim();
 }
