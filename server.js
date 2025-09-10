@@ -109,7 +109,14 @@ Score LOW (0-34) for:
 - Personal voice coming through
 - Flows naturally
 
-For flags, provide exact 1-4 word phrases that can be replaced with more natural alternatives.`;
+CRITICAL: For suggestedFix, provide ONLY casual, simple alternatives that sound like natural speech:
+- leverage cutting-edge technologies → use new tech
+- advanced technologies → latest tools  
+- comprehensive solutions → complete ways
+- optimize efficiency → work better
+- facilitate collaboration → help teamwork
+
+Never suggest formal academic language in fixes. Keep suggestions to 1-3 casual words.`;
 
   const userPrompt = `Analyze this text for AI-like patterns. Focus on overly formal language that sounds robotic:
 
@@ -122,7 +129,7 @@ Look for:
 - Repetitive sentence patterns
 - Generic academic language
 
-Provide exact short phrases to replace.`;
+For each flag, provide simple casual replacements (1-3 words) that sound natural.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
@@ -151,19 +158,24 @@ Provide exact short phrases to replace.`;
   parsed.score = Math.max(0, Math.min(100, parseInt(parsed.score) || 60));
   if (!Array.isArray(parsed.flags)) parsed.flags = [];
   
-  // Filter flags for actual replaceable phrases
+  // Filter flags for actual replaceable phrases and ensure suggestions are casual
   parsed.flags = parsed.flags.filter(flag => {
     const phrase = (flag.phrase || '').trim();
     const fix = (flag.suggestedFix || '').trim();
+    
+    // Reject suggestions that are still formal/academic
+    const formalWords = ['advanced', 'technologies', 'comprehensive', 'solutions', 'facilitate', 'optimize', 'implement', 'enhance', 'utilize', 'leverage'];
+    const containsFormalWords = formalWords.some(word => fix.toLowerCase().includes(word));
     
     return phrase.length > 0 && 
            phrase.length < 50 &&
            phrase.split(' ').length <= 4 &&
            fix.length > 0 && 
-           fix.length < 50 &&
-           fix.split(' ').length <= 4 &&
+           fix.length < 30 &&
+           fix.split(' ').length <= 3 &&
            phrase !== 'N/A' && 
            fix !== '—' &&
+           !containsFormalWords &&
            !fix.toLowerCase().includes('try') &&
            !fix.toLowerCase().includes('consider') &&
            !fix.toLowerCase().includes('should');
