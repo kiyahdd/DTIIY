@@ -84,7 +84,7 @@ app.listen(PORT, () => {
 let suggestedPhrases = new Set();
 
 async function analyzeWithOpenAI(text) {
-  const systemPrompt = `You are a strict AI detector that identifies text patterns typical of AI generation.
+  const systemPrompt = `You are a highly sensitive AI detector that identifies even subtle AI-generated patterns in academic writing.
 
 Return STRICT JSON with these exact keys:
 - score (0-100 integer, where higher = more AI-like)
@@ -92,27 +92,41 @@ Return STRICT JSON with these exact keys:
 - flags (array of objects with: issue, phrase, explanation, suggestedFix)
 - proTip (one helpful sentence)
 
-Flag HIGH (60-85) for:
+SCORING GUIDELINES:
+- Score 80-90 for heavy corporate buzzwords and perfect formal structure
+- Score 60-79 for noticeable formal patterns but some natural elements  
+- Score 40-59 for mixed formal/casual with some contractions
+- Score 20-39 for mostly natural academic writing with good flow
+- Score 0-19 for genuinely human-sounding academic prose
+
+BE SENSITIVE to changes - even small improvements should lower the score noticeably.
+
+Flag these AI patterns:
 - Corporate buzzwords: utilize, leverage, optimize, facilitate, implement, enhance
-- Formal transitions: furthermore, however, therefore, in conclusion
-- Academic phrases: comprehensive, substantial, significant, various, numerous
-- Perfect grammar with zero contractions
-- Repetitive sentence structures
+- Overly formal transitions: furthermore, however, therefore, moreover, in conclusion
+- Perfect parallel structure without variation
+- Lack of contractions where natural
+- Generic academic phrases: comprehensive solutions, cutting-edge technologies, unprecedented levels
 
-For suggestedFix, provide casual alternatives:
-- utilize/leverage → use
-- cutting-edge technologies → new tech  
-- advanced technologies → latest tools
-- optimize → work better
-- facilitate → help with
-- comprehensive → complete
-- implement → set up`;
+For suggestedFix, provide ACADEMIC-APPROPRIATE but more natural alternatives:
+- utilize → use/employ
+- leverage → use/apply  
+- cutting-edge technologies → advanced tools/modern technology
+- comprehensive solutions → thorough approaches/complete methods
+- facilitate → enable/support
+- optimize → improve/enhance
+- implement → establish/introduce
+- furthermore → additionally/also
+- however → but/though/yet
+- therefore → thus/so/consequently
 
-  const userPrompt = `Analyze this text for AI patterns:
+Keep suggestions academic but more conversational.`;
+
+  const userPrompt = `Analyze this text for AI patterns. Be sensitive to improvements - if text has been made more natural, reflect that in a lower score:
 
 Text: "${escapeQuotes(text)}"
 
-Focus on formal corporate language that sounds robotic.`;
+Look for formal patterns but suggest academic-appropriate alternatives, not overly casual language.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
@@ -128,7 +142,7 @@ Focus on formal corporate language that sounds robotic.`;
       score: 65,
       reasoning: "Could not parse AI response.",
       flags: [],
-      proTip: "Try using more natural language."
+      proTip: "Try using more natural academic language."
     };
   }
 
@@ -159,7 +173,7 @@ Focus on formal corporate language that sounds robotic.`;
   });
   
   if (!parsed.reasoning) parsed.reasoning = "Analysis completed.";
-  if (!parsed.proTip) parsed.proTip = "Use more natural language and contractions.";
+  if (!parsed.proTip) parsed.proTip = "Use more natural academic language with appropriate contractions.";
   
   return parsed;
 }
