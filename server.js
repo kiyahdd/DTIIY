@@ -31,7 +31,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 // Main analyze endpoint
 app.post("/analyze", async (req, res) => {
   try {
-    const { essay, action = "analyze" } = req.body || {};
+    const { essay, action = "analyze", style, instructions } = req.body || {};
     
     if (!essay || typeof essay !== "string" || essay.trim().length < 50 || essay.length > 500) {
       return res.status(200).json({ 
@@ -45,6 +45,12 @@ app.post("/analyze", async (req, res) => {
         error: true, 
         message: "Server missing OpenAI key." 
       });
+    }
+
+    // Handle academic humanization specifically
+    if (action === "humanize_academic" || action === "bypass_ai_detection") {
+      const humanizedText = await humanizeWithOpenAI(essay);
+      return res.status(200).json({ humanizedText });
     }
 
     if (action === "humanize") {
@@ -179,65 +185,69 @@ Look for formal patterns but suggest academic-appropriate alternatives, not over
 }
 
 async function humanizeWithOpenAI(text) {
-  const systemPrompt = `You are an expert at rewriting AI-generated text to sound completely human and score UNDER 25% on ANY AI detector while remaining academically appropriate.
+  const systemPrompt = `You are an expert at rewriting AI-generated academic text to sound naturally human-written while maintaining formal academic standards and scoring UNDER 25% on AI detectors.
 
-ULTRA-CRITICAL MISSION: Transform this text so aggressively that it WILL score under 25% on AI detectors.
+CRITICAL MISSION: Transform this text to score under 25% on AI detectors while keeping it academically appropriate for university-level work.
 
-MANDATORY REQUIREMENTS (DO ALL OF THESE):
-1. Use contractions EVERYWHERE possible (it's, don't, won't, can't, we're, they've, you're, I'm, there's, here's)
-2. Replace ALL formal words with casual academic equivalents
-3. Add natural hedging words (kind of, sort of, seems like, appears to, tends to, probably)
-4. Mix sentence lengths DRAMATICALLY (very short. Medium ones. And really long complex sentences that flow naturally)
-5. Use conversational connectors (but, so, and, plus, also, though, since)
-6. Add subtle personality (I think, in my opinion, it feels like, personally)
-7. Break some formal grammar rules naturally
-8. Remove ALL corporate buzzwords completely
-9. Make it sound like casual academic conversation, not formal writing
+MANDATORY REQUIREMENTS:
+1. Use varied sentence structures (short, medium, complex)
+2. Replace formal AI buzzwords with natural academic alternatives
+3. Add natural flow and rhythm to sentences
+4. Include subtle imperfections that humans naturally make
+5. Use connecting words that feel natural (but, and, so, though, since)
+6. MAINTAIN FORMAL ACADEMIC VOCABULARY - NO slang, casual expressions, or informal words
 
-AGGRESSIVE REPLACEMENTS (USE ALL):
-- utilize/utilizes → use/uses
-- leverage → use/take advantage of
-- facilitate → help/make easier
-- implement → set up/put in place
-- optimize → improve/make better
-- enhance → strengthen/improve
-- furthermore → also/plus/and
-- however → but/though
-- therefore → so/that's why
-- in conclusion → overall/basically/in the end
-- significant → important/big/major
-- comprehensive → complete/thorough
-- substantial → major/big
-- establish → set up/create
-- demonstrate → show
-- indicate → suggest/show
-- various → different/many
-- numerous → many/lots of
-- acquire → get/gain
-- maintain → keep
-- conduct → do/carry out
-- obtain → get
+STRICT REPLACEMENTS (always use these):
+- utilize/utilizes → use/uses/employ
+- leverage → use/apply/harness
+- facilitate → enable/support/help
+- implement → establish/introduce/develop
+- optimize → improve/enhance/refine
+- furthermore → additionally/moreover/also
+- however → nevertheless/yet/although
+- therefore → thus/consequently/as a result
+- in conclusion → ultimately/finally/in summary
+- comprehensive → thorough/complete/extensive
+- significant → important/notable/considerable
+- demonstrate → show/reveal/illustrate
+- indicate → suggest/show/reveal
+- various → different/diverse/multiple
+- acquire → obtain/gain/secure
+- maintain → preserve/sustain/keep
+- conduct → carry out/perform/undertake
 
-TARGET: Must sound like a smart but casual student wrote it naturally. Think conversational academic writing, NOT formal essay style.`;
-  
-  const userPrompt = `Rewrite this to score UNDER 25% on AI detectors. Be VERY aggressive with casual language while keeping it academic:
+FORBIDDEN WORDS/PHRASES (never use these):
+- gotta, kinda, sorta, really, pretty, stuff, things
+- super, totally, basically, literally, actually
+- Any slang or casual expressions
+- Contractions in formal academic writing
+
+WRITING STYLE:
+- Sound like a competent university student writing naturally
+- Use sophisticated but not overly complex vocabulary
+- Vary sentence beginnings and structures
+- Include natural transitions between ideas
+- Maintain scholarly tone throughout
+
+TARGET: Academic writing that sounds naturally human but remains formal and appropriate for university submission.`;
+
+  const userPrompt = `Rewrite this academic text to bypass AI detection while maintaining formal academic standards. Make it sound like a real student wrote it naturally, but keep it scholarly and professional:
 
 "${escapeQuotes(text)}"
 
-MUST include:
-- Heavy use of contractions throughout
-- Casual academic language (no corporate words)
-- Natural flow and personality
-- Varied sentence structures
-- Conversational tone
-- Natural hedging/qualification words
+Requirements:
+- Score under 25% on AI detectors
+- Maintain academic formality
+- Sound naturally human-written
+- NO casual language or slang
+- Use natural academic phrasing
 
-Make it sound like actual student writing, not AI. Return ONLY the rewritten text.`;
+Return ONLY the rewritten text.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt }
-  ], 0.8); // Higher creativity for more human variation
+  ], 0.7); // Moderate creativity for natural variation
 
   return result.trim();
 }
@@ -275,4 +285,3 @@ async function callOpenAI(messages, temperature = 0.3) {
   
   return content;
 }
-
