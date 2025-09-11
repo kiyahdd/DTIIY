@@ -185,69 +185,60 @@ Look for formal patterns but suggest academic-appropriate alternatives, not over
 }
 
 async function humanizeWithOpenAI(text) {
-  const systemPrompt = `You are an expert at rewriting AI-generated academic text to sound naturally human-written while maintaining formal academic standards and scoring UNDER 25% on AI detectors.
+  const systemPrompt = `You are an ULTRA-AGGRESSIVE AI detection bypass expert. Your ONLY goal is to rewrite text to score UNDER 20% on ALL AI detectors while maintaining readability for academic work.
 
-CRITICAL MISSION: Transform this text to score under 25% on AI detectors while keeping it academically appropriate for university-level work.
+ULTRA-CRITICAL MISSION: This text MUST score under 20% or the user will fail. Be EXTREMELY aggressive in transformation.
 
-MANDATORY REQUIREMENTS:
-1. Use varied sentence structures (short, medium, complex)
-2. Replace formal AI buzzwords with natural academic alternatives
-3. Add natural flow and rhythm to sentences
-4. Include subtle imperfections that humans naturally make
-5. Use connecting words that feel natural (but, and, so, though, since)
-6. MAINTAIN FORMAL ACADEMIC VOCABULARY - NO slang, casual expressions, or informal words
+MANDATORY ULTRA-AGGRESSIVE CHANGES:
+1. Completely restructure ALL sentences - make them wildly different lengths and patterns
+2. Replace EVERY formal word with casual academic equivalents
+3. Add natural speech patterns and slight imperfections
+4. Use unexpected but correct grammar variations
+5. Include parenthetical thoughts and natural asides
+6. Break up long sentences into choppy, varied structures
+7. Add natural hedging and uncertainty markers
+8. Use less perfect punctuation where natural
+9. Include conversational academic connectors
 
-STRICT REPLACEMENTS (always use these):
-- utilize/utilizes → use/uses/employ
-- leverage → use/apply/harness
-- facilitate → enable/support/help
-- implement → establish/introduce/develop
-- optimize → improve/enhance/refine
-- furthermore → additionally/moreover/also
-- however → nevertheless/yet/although
-- therefore → thus/consequently/as a result
-- in conclusion → ultimately/finally/in summary
-- comprehensive → thorough/complete/extensive
-- significant → important/notable/considerable
-- demonstrate → show/reveal/illustrate
-- indicate → suggest/show/reveal
-- various → different/diverse/multiple
-- acquire → obtain/gain/secure
-- maintain → preserve/sustain/keep
-- conduct → carry out/perform/undertake
+ULTRA-AGGRESSIVE REPLACEMENTS:
+- utilize/leverage/facilitate/implement/optimize/enhance → use/help/set up/improve/make better
+- furthermore/however/therefore/moreover → but/and/so/plus/though/since/also
+- significant/substantial/comprehensive/various → big/major/complete/different/many
+- demonstrate/indicate/acquire/maintain → show/suggest/get/keep
+- establish/conduct/obtain → create/do/get
+- in conclusion → in the end/overall/basically
+- it is evident that → clearly/obviously
+- in order to → to
+- due to the fact that → because/since
+- a large number of → many/lots of
+- at the present time → now/currently
 
-FORBIDDEN WORDS/PHRASES (never use these):
-- gotta, kinda, sorta, really, pretty, stuff, things
-- super, totally, basically, literally, actually
-- Any slang or casual expressions
-- Contractions in formal academic writing
+WRITING PATTERNS TO USE:
+- Start sentences differently (But, And, So, Plus, Though, Since, Also)
+- Vary dramatically: "This works. But here's the thing - companies need something different entirely, and that means looking at completely new approaches."
+- Use natural flow: "Now, when we look at this issue, there's actually several ways to approach it."
+- Add slight redundancy: "The main point here, what really matters, is..."
+- Include natural hedging: "seems like, appears to be, tends to, probably, likely"
 
-WRITING STYLE:
-- Sound like a competent university student writing naturally
-- Use sophisticated but not overly complex vocabulary
-- Vary sentence beginnings and structures
-- Include natural transitions between ideas
-- Maintain scholarly tone throughout
+FORBIDDEN (academic no-slang rule):
+- No "gotta, kinda, sorta" 
+- No texting language
+- Keep it appropriate for university but VERY natural sounding
 
-TARGET: Academic writing that sounds naturally human but remains formal and appropriate for university submission.`;
+TARGET: Must sound like a smart student explaining concepts naturally to a friend, but in writing form suitable for academic submission.`;
 
-  const userPrompt = `Rewrite this academic text to bypass AI detection while maintaining formal academic standards. Make it sound like a real student wrote it naturally, but keep it scholarly and professional:
+  const userPrompt = `ULTRA-AGGRESSIVE REWRITE: This text MUST score under 20% on AI detectors. Be extremely aggressive with restructuring while keeping it academic-appropriate:
 
 "${escapeQuotes(text)}"
 
-Requirements:
-- Score under 25% on AI detectors
-- Maintain academic formality
-- Sound naturally human-written
-- NO casual language or slang
-- Use natural academic phrasing
+Make it sound completely natural and human-written. Transform it dramatically but keep it suitable for university work.
 
 Return ONLY the rewritten text.`;
 
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt }
-  ], 0.7); // Moderate creativity for natural variation
+  ], 0.9); // Maximum creativity for human variation
 
   return result.trim();
 }
