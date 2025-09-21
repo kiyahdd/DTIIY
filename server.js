@@ -30,6 +30,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 
 // Cache for original analyses - prevents new phrases from appearing
 const originalAnalyses = new Map();
+const scoreCache = new Map(); // Cache GPT scores to avoid re-scoring same text
 
 // Main analyze endpoint
 app.post("/analyze", async (req, res) => {
@@ -52,21 +53,21 @@ app.post("/analyze", async (req, res) => {
 
     // Handle academic humanization specifically
     if (action === "humanize_academic" || action === "bypass_ai_detection") {
-      const humanizedText = await humanizeWithOpenAI(essay);
+      const humanizedText = await reliableHumanize(essay);
       return res.status(200).json({ humanizedText });
     }
 
     if (action === "humanize" || action === "rewrite") {
-      const humanizedText = await humanizeWithOpenAI(essay);
+      const humanizedText = await reliableHumanize(essay);
       return res.status(200).json({ humanizedText });
     }
 
-    // Main analysis - NOW DETERMINISTIC WITH CACHING
+    // Main analysis - NOW WITH REAL GPT SCORING ONLY
     const analysis = await analyzeDeterministic(essay, processed_phrases, session_id);
     
     // Try to get humanized text (non-blocking)
     try {
-      analysis.humanizedText = await humanizeWithOpenAI(essay);
+      analysis.humanizedText = await reliableHumanize(essay);
     } catch (err) {
       console.log("Humanize failed:", err.message);
       analysis.humanizedText = "Rewrite temporarily unavailable.";
@@ -87,9 +88,60 @@ app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
 
-// ---------- DETERMINISTIC ANALYSIS WITH CACHING ----------
+// ---------- 100% REAL GPT ANALYSIS - NO FAKE SCORING ----------
 
-function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
+async function getReliableGPTScore(text) {
+  const textHash = createTextHash(text);
+  
+  // Check cache first
+  if (scoreCache.has(textHash)) {
+    console.log("Using cached score");
+    return scoreCache.get(textHash);
+  }
+
+  const prompt = `You are an expert AI detection system used by universities. Analyze this text and rate its AI detection risk from 0-100%.
+
+SCORING GUIDELINES (be realistic):
+- 0-29%: Natural human writing with varied sentence structure, personality, and authentic voice
+- 30-59%: Somewhat formulaic but could realistically be human academic writing
+- 60-89%: Strong AI patterns - overly formal, repetitive, corporate buzzwords, lacks personality
+- 90-100%: Obviously AI-generated with generic phrasing, perfect structure, template language
+
+KEY AI INDICATORS:
+- Overuse of words like "utilize, leverage, facilitate, implement, optimize"
+- Repetitive formal transitions "furthermore, moreover, in addition"
+- Generic corporate phrases "operational efficiency, comprehensive solution"
+- Perfect grammar with no natural imperfections
+- Lack of personal voice, opinion, or unique perspective
+- Template-like structure and predictable phrasing
+
+Be accurate - most good human academic writing scores 20-40%. Only obviously AI text should score 70%+.
+
+Text to analyze: "${escapeQuotes(text)}"
+
+Respond with just a number from 0-100.`;
+
+  try {
+    const result = await callOpenAI([
+      { role: "system", content: "You are a precise AI detection expert. Always respond with just a number 0-100." },
+      { role: "user", content: prompt }
+    ], 0.1); // Very low temperature for consistency
+
+    const score = parseInt(result.trim());
+    if (score >= 0 && score <= 100) {
+      console.log(`GPT scored text: ${score}%`);
+      scoreCache.set(textHash, score);
+      return score;
+    }
+    
+    throw new Error("Invalid score returned");
+  } catch (err) {
+    console.log("GPT scoring failed:", err.message);
+    throw new Error("Real-time analysis unavailable");
+  }
+}
+
+async function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
   const processedSet = new Set((processedPhrases || []).map(p => p.toLowerCase().trim()));
   
   // Create unique key for this original text (before any replacements)
@@ -123,26 +175,125 @@ function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
     return true;
   });
   
-  // Ensure minimum 3 flags for Pro feature display (2 visible + 1 blurred)
-  const flagsToReturn = availableFlags.slice(0, Math.max(3, availableFlags.length));
+  // Limit flags to what frontend can display (4 max: 2 visible + 2 blurred)
+  const flagsToReturn = availableFlags.slice(0, 4);
   
-  // Calculate score based on weighted flags
-  let score = 25 + flagsToReturn.reduce((sum, flag) => sum + (flag.weight || 12), 0);
-  if (flagsToReturn.length === 0) score = 15;
-  if (flagsToReturn.length > 5) score = Math.min(95, score + 10);
-  score = Math.min(95, score); // Cap at 95%
+  // GET 100% REAL GPT SCORE - NO FALLBACK TO FAKE SCORING
+  const score = await getReliableGPTScore(text);
   
   return {
     score: Math.round(score),
-    reasoning: `Analysis shows ${flagsToReturn.length} AI detection patterns. ${flagsToReturn.length > 3 ? 'Multiple formal language issues detected.' : flagsToReturn.length > 1 ? 'Some corporate language patterns found.' : 'Minimal detection risks remaining.'}`,
+    reasoning: generateScoreReasoning(score, flagsToReturn.length),
     flags: flagsToReturn,
-    proTip: "Replace formal business language with more natural academic alternatives."
+    proTip: getScoreSpecificTip(score)
   };
+}
+
+function generateScoreReasoning(score, flagCount) {
+  if (score >= 60) {
+    return `High AI detection risk (${score}%). Found ${flagCount} problematic patterns. Text shows strong AI characteristics that will likely trigger detection tools.`;
+  } else if (score >= 30) {
+    return `Moderate AI detection risk (${score}%). Found ${flagCount} potential issues. Some AI-typical patterns detected but text could pass as human.`;
+  } else {
+    return `Low AI detection risk (${score}%). ${flagCount === 0 ? 'No major red flags' : 'Only minor issues'} found. Text appears naturally written and should pass detection tools.`;
+  }
+}
+
+function getScoreSpecificTip(score) {
+  if (score >= 60) {
+    return "Urgent: Text will likely be flagged. Use 'Rewrite Text' to significantly reduce AI detection risk before submission.";
+  } else if (score >= 30) {
+    return "Recommended: Consider using 'Rewrite Text' or manually address flagged phrases to reduce detection risk.";
+  } else {
+    return "Excellent: Text should pass most AI detection tools with minimal risk. Ready for submission.";
+  }
+}
+
+// ---------- RELIABLE REWRITE WITH REAL VALIDATION ----------
+
+async function reliableHumanize(text, targetScore = 25) {
+  console.log(`Starting rewrite, target: ${targetScore}%`);
+  
+  // First rewrite attempt
+  const rewrittenText = await humanizeWithOpenAI(text);
+  
+  // Score the rewrite to validate improvement
+  const newScore = await getReliableGPTScore(rewrittenText);
+  
+  console.log(`Rewrite scored: ${newScore}% (target: ${targetScore}%)`);
+  
+  if (newScore <= targetScore) {
+    console.log(`Success! Achieved ${newScore}%`);
+    return rewrittenText;
+  }
+  
+  // If still too high, try one more aggressive rewrite
+  console.log(`Score still high, trying more aggressive rewrite...`);
+  const secondRewrite = await humanizeWithOpenAI(rewrittenText, true);
+  const finalScore = await getReliableGPTScore(secondRewrite);
+  
+  console.log(`Second attempt: ${finalScore}%`);
+  
+  // Return whichever version scored better
+  return finalScore <= newScore ? secondRewrite : rewrittenText;
+}
+
+async function humanizeWithOpenAI(text, aggressive = false) {
+  const systemPrompt = aggressive ? 
+    `You are an expert at making text sound EXTREMELY natural and human. This is a second attempt - be MORE aggressive in transformation.
+
+CRITICAL: This text scored too high on AI detection. Make it sound like a real person wrote it naturally.
+
+EXTREME CHANGES NEEDED:
+1. Completely change sentence structures - make them very different lengths
+2. Add more personality and natural speech patterns  
+3. Use more casual academic language
+4. Include natural hesitations and hedging
+5. Break perfect grammar where it sounds natural
+6. Add more human perspective and opinion
+
+Make it sound like a smart student explaining to a friend, but keep it appropriate for university.` :
+
+    `You are an expert at making AI-generated text sound completely human and natural while maintaining academic appropriateness.
+
+CRITICAL GOAL: Transform this text to score UNDER 25% on AI detection tools.
+
+TRANSFORMATION REQUIREMENTS:
+1. Completely restructure sentences - vary lengths dramatically (5-30 words)
+2. Replace ALL formal/corporate language with natural alternatives
+3. Add natural speech patterns and slight imperfections
+4. Use conversational but academic-appropriate language
+5. Include natural hedging words (seems, appears, tends to, probably)
+6. Add personality and human perspective
+
+MANDATORY REPLACEMENTS:
+- utilize/leverage/facilitate → use/help/work with
+- furthermore/moreover/additionally → also/plus/and/but
+- significant/substantial → big/major/important
+- implement/establish → set up/create/start
+- optimize/enhance → improve/make better
+- operational efficiency → work performance
+- comprehensive → complete/full
+- demonstrate → show
+
+Keep it suitable for university submission but make it sound like a smart student wrote it naturally.`;
+
+  const userPrompt = `Transform this text to sound completely human and natural (target: under 25% AI detection):
+
+"${escapeQuotes(text)}"
+
+Return ONLY the rewritten text.`;
+
+  const result = await callOpenAI([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt }
+  ], aggressive ? 0.8 : 0.6); // Higher creativity for more human variation
+
+  return result.trim();
 }
 
 function generateAllFlags(text) {
   const flagPatterns = [
-    // CORPORATE/BUSINESS PATTERNS
     {
       phrases: ["utilize", "utilizes", "utilizing", "utilization"],
       severity: "HIGH", weight: 15, issue: "Corporate Buzzword",
@@ -174,75 +325,16 @@ function generateAllFlags(text) {
       suggestedFix: "complete approach"
     },
     {
-      phrases: ["seamlessly integrate", "seamlessly integrating"],
-      severity: "CRITICAL", weight: 18, issue: "Corporate Phrase",
-      explanation: "Common AI pattern in business writing",
-      suggestedFix: "easily combine"
-    },
-    {
       phrases: ["operational efficiency"],
       severity: "HIGH", weight: 16, issue: "Corporate Jargon",
       explanation: "Business buzzword commonly used by AI",
       suggestedFix: "work efficiency"
     },
-
-    // ACADEMIC WRITING PATTERNS
-    {
-      phrases: ["it is evident that", "it is clear that"],
-      severity: "HIGH", weight: 14, issue: "Academic Formality",
-      explanation: "Overly formal academic phrase common in AI writing",
-      suggestedFix: "clearly"
-    },
-    {
-      phrases: ["the results indicate", "the data indicates"],
-      severity: "MEDIUM", weight: 10, issue: "Scientific Language",
-      explanation: "Formal research language that sounds AI-generated",
-      suggestedFix: "our results show"
-    },
-    {
-      phrases: ["further research is needed", "additional research is required"],
-      severity: "HIGH", weight: 15, issue: "Academic Cliché",
-      explanation: "Overused conclusion phrase in AI-generated academic writing",
-      suggestedFix: "more studies could explore this"
-    },
-    {
-      phrases: ["throughout history", "throughout the ages"],
-      severity: "MEDIUM", weight: 9, issue: "Historical Cliché",
-      explanation: "Generic historical phrase common in AI writing",
-      suggestedFix: "over time"
-    },
-    {
-      phrases: ["it can be argued that", "one could argue that"],
-      severity: "MEDIUM", weight: 11, issue: "Academic Hedging",
-      explanation: "Formal academic hedging that sounds AI-generated",
-      suggestedFix: "some might say"
-    },
-    {
-      phrases: ["the author demonstrates", "the writer demonstrates"],
-      severity: "MEDIUM", weight: 9, issue: "Literary Analysis",
-      explanation: "Common formal phrase in AI-generated literary analysis",
-      suggestedFix: "the author shows",
-      contextExclusions: ["protest", "against", "march"]
-    },
-    {
-      phrases: ["this exemplifies", "this illustrates"],
-      severity: "MEDIUM", weight: 8, issue: "Academic Language",
-      explanation: "Formal analytical language common in AI writing",
-      suggestedFix: "this shows"
-    },
-
-    // TRANSITIONS AND CONNECTORS  
     {
       phrases: ["furthermore", "moreover"],
       severity: "MEDIUM", weight: 10, issue: "Formal Transition",
       explanation: "Overly formal connector that sounds AI-generated",
       suggestedFix: "also"
-    },
-    {
-      phrases: ["in addition to this", "in addition to that"],
-      severity: "MEDIUM", weight: 9, issue: "Formal Transition",
-      explanation: "Wordy formal transition common in AI writing",
-      suggestedFix: "plus"
     },
     {
       phrases: ["consequently", "as a consequence"],
@@ -256,69 +348,6 @@ function generateAllFlags(text) {
       explanation: "Overused formal conclusion phrase",
       suggestedFix: "overall"
     },
-
-    // PERSONAL STATEMENT PATTERNS
-    {
-      phrases: ["I have always been passionate about", "I am passionate about"],
-      severity: "HIGH", weight: 16, issue: "Personal Statement Cliché",
-      explanation: "Overused phrase in AI-generated personal statements",
-      suggestedFix: "I really care about"
-    },
-    {
-      phrases: ["this experience taught me", "this taught me"],
-      severity: "MEDIUM", weight: 11, issue: "Reflection Cliché",
-      explanation: "Common AI pattern in personal reflections",
-      suggestedFix: "I learned"
-    },
-    {
-      phrases: ["I realized the importance of", "I came to understand"],
-      severity: "MEDIUM", weight: 10, issue: "Personal Insight",
-      explanation: "Generic insight phrase common in AI writing",
-      suggestedFix: "I saw how important"
-    },
-
-    // SCIENTIFIC/TECHNICAL PATTERNS
-    {
-      phrases: ["the process involves", "the method involves"],
-      severity: "MEDIUM", weight: 8, issue: "Technical Language",
-      explanation: "Formal technical language that sounds AI-generated",
-      suggestedFix: "the process includes"
-    },
-    {
-      phrases: ["optimal performance", "maximum efficiency"],
-      severity: "HIGH", weight: 13, issue: "Technical Jargon",
-      explanation: "Technical buzzwords common in AI writing",
-      suggestedFix: "best performance"
-    },
-    {
-      phrases: ["it is well established that", "it is widely known that"],
-      severity: "HIGH", weight: 14, issue: "Scientific Authority",
-      explanation: "Formal scientific authority phrase that sounds AI-generated",
-      suggestedFix: "we know that"
-    },
-
-    // QUALIFYING LANGUAGE
-    {
-      phrases: ["significant", "significantly"],
-      severity: "MEDIUM", weight: 8, issue: "Formal Language",
-      explanation: "Overused formal qualifier in AI writing",
-      suggestedFix: "important",
-      contextExclusions: ["other", "relationship", "figure", "digit", "statistical"]
-    },
-    {
-      phrases: ["substantial", "substantially"],
-      severity: "MEDIUM", weight: 9, issue: "Formal Language",
-      explanation: "Formal qualifier common in AI writing",
-      suggestedFix: "major"
-    },
-    {
-      phrases: ["considerable", "considerably"],
-      severity: "MEDIUM", weight: 8, issue: "Formal Language",
-      explanation: "Formal qualifier that sounds AI-generated",
-      suggestedFix: "large"
-    },
-
-    // ACTION VERBS
     {
       phrases: ["implement", "implements", "implementing"],
       severity: "HIGH", weight: 12, issue: "Corporate Buzzword",
@@ -331,18 +360,6 @@ function generateAllFlags(text) {
       severity: "MEDIUM", weight: 9, issue: "Formal Language",
       explanation: "Corporate term common in AI-generated text",
       suggestedFix: "create"
-    },
-    {
-      phrases: ["acquire", "acquiring"],
-      severity: "MEDIUM", weight: 8, issue: "Formal Language",
-      explanation: "Formal verb common in AI writing",
-      suggestedFix: "get"
-    },
-    {
-      phrases: ["maintain", "maintaining"],
-      severity: "LOW", weight: 6, issue: "Formal Language",
-      explanation: "Slightly formal verb that can sound AI-generated",
-      suggestedFix: "keep"
     },
     {
       phrases: ["demonstrate", "demonstrates"],
@@ -365,12 +382,10 @@ function generateAllFlags(text) {
   for (const pattern of flagPatterns) {
     for (const phrase of pattern.phrases) {
       if (textLower.includes(phrase.toLowerCase())) {
-        // Check context exclusions
         if (pattern.contextExclusions && hasContextExclusion(text, phrase, pattern.contextExclusions)) {
           continue;
         }
 
-        // FIXED: Use case-insensitive search without strict word boundaries
         const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         const match = text.match(regex);
         
@@ -398,7 +413,6 @@ function hasContextExclusion(text, phrase, exclusions) {
   const phraseIndex = text.toLowerCase().indexOf(phrase.toLowerCase());
   if (phraseIndex === -1) return false;
   
-  // Check 30 characters before and after the phrase
   const start = Math.max(0, phraseIndex - 30);
   const end = Math.min(text.length, phraseIndex + phrase.length + 30);
   const context = text.substring(start, end).toLowerCase();
@@ -407,73 +421,13 @@ function hasContextExclusion(text, phrase, exclusions) {
 }
 
 function createTextHash(text) {
-  // Simple hash function for text
   let hash = 0;
   for (let i = 0; i < text.length; i++) {
     const char = text.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
   return hash.toString();
-}
-
-async function humanizeWithOpenAI(text) {
-  const systemPrompt = `You are an ULTRA-AGGRESSIVE AI detection bypass expert. Your ONLY goal is to rewrite text to score UNDER 20% on ALL AI detectors while maintaining readability for academic work.
-
-ULTRA-CRITICAL MISSION: This text MUST score under 20% or the user will fail. Be EXTREMELY aggressive in transformation.
-
-MANDATORY ULTRA-AGGRESSIVE CHANGES:
-1. Completely restructure ALL sentences - make them wildly different lengths and patterns
-2. Replace EVERY formal word with casual academic equivalents
-3. Add natural speech patterns and slight imperfections
-4. Use unexpected but correct grammar variations
-5. Include parenthetical thoughts and natural asides
-6. Break up long sentences into choppy, varied structures
-7. Add natural hedging and uncertainty markers
-8. Use less perfect punctuation where natural
-9. Include conversational academic connectors
-
-ULTRA-AGGRESSIVE REPLACEMENTS:
-- utilize/leverage/facilitate/implement/optimize/enhance → use/help/set up/improve/make better
-- furthermore/however/therefore/moreover → but/and/so/plus/though/since/also
-- significant/substantial/comprehensive/various → big/major/complete/different/many
-- demonstrate/indicate/acquire/maintain → show/suggest/get/keep
-- establish/conduct/obtain → create/do/get
-- in conclusion → in the end/overall/basically
-- it is evident that → clearly/obviously
-- in order to → to
-- due to the fact that → because/since
-- a large number of → many/lots of
-- at the present time → now/currently
-
-WRITING PATTERNS TO USE:
-- Start sentences differently (But, And, So, Plus, Though, Since, Also)
-- Vary dramatically: "This works. But here's the thing - companies need something different entirely, and that means looking at completely new approaches."
-- Use natural flow: "Now, when we look at this issue, there's actually several ways to approach it."
-- Add slight redundancy: "The main point here, what really matters, is..."
-- Include natural hedging: "seems like, appears to be, tends to, probably, likely"
-
-FORBIDDEN (academic no-slang rule):
-- No "gotta, kinda, sorta" 
-- No texting language
-- Keep it appropriate for university but VERY natural sounding
-
-TARGET: Must sound like a smart student explaining concepts naturally to a friend, but in writing form suitable for academic submission.`;
-
-  const userPrompt = `ULTRA-AGGRESSIVE REWRITE: This text MUST score under 20% on AI detectors. Be extremely aggressive with restructuring while keeping it academic-appropriate:
-
-"${escapeQuotes(text)}"
-
-Make it sound completely natural and human-written. Transform it dramatically but keep it suitable for university work.
-
-Return ONLY the rewritten text.`;
-
-  const result = await callOpenAI([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt }
-  ], 0.4); // Maximum creativity for human variation
-
-  return result.trim();
 }
 
 function escapeQuotes(str) {
@@ -488,7 +442,7 @@ async function callOpenAI(messages, temperature = 0.3) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini", // Cost-efficient model
+      model: "gpt-4o-mini",
       messages: messages,
       temperature: temperature,
       max_tokens: 800
@@ -509,4 +463,3 @@ async function callOpenAI(messages, temperature = 0.3) {
   
   return content;
 }
-
