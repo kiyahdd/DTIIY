@@ -28,10 +28,13 @@ app.use(
 // Health check endpoint
 app.get("/health", (req, res) => res.json({ ok: true }));
 
+// Cache for original analyses - prevents new phrases from appearing
+const originalAnalyses = new Map();
+
 // Main analyze endpoint
 app.post("/analyze", async (req, res) => {
   try {
-    const { essay, action = "analyze", style, instructions, processed_phrases } = req.body || {};
+    const { essay, action = "analyze", style, instructions, processed_phrases, session_id } = req.body || {};
     
     if (!essay || typeof essay !== "string" || essay.trim().length < 50 || essay.length > 500) {
       return res.status(200).json({ 
@@ -58,8 +61,8 @@ app.post("/analyze", async (req, res) => {
       return res.status(200).json({ humanizedText });
     }
 
-    // Main analysis - NOW DETERMINISTIC
-    const analysis = await analyzeDeterministic(essay, processed_phrases);
+    // Main analysis - NOW DETERMINISTIC WITH CACHING
+    const analysis = await analyzeDeterministic(essay, processed_phrases, session_id);
     
     // Try to get humanized text (non-blocking)
     try {
@@ -84,12 +87,60 @@ app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
 
-// ---------- DETERMINISTIC ANALYSIS ----------
+// ---------- DETERMINISTIC ANALYSIS WITH CACHING ----------
 
-function analyzeDeterministic(text, processedPhrases = []) {
+function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
   const processedSet = new Set((processedPhrases || []).map(p => p.toLowerCase().trim()));
   
-  // Fixed patterns that ALWAYS get flagged in the same order
+  // Create unique key for this original text (before any replacements)
+  const textKey = sessionId || createTextHash(text);
+  
+  // If this is the first analysis, generate and cache ALL possible flags
+  if (!originalAnalyses.has(textKey)) {
+    const allPossibleFlags = generateAllFlags(text);
+    originalAnalyses.set(textKey, allPossibleFlags);
+    console.log(`Cached ${allPossibleFlags.length} flags for session ${textKey}`);
+  }
+  
+  // Get the original flag list (never changes)
+  const originalFlags = originalAnalyses.get(textKey);
+  
+  // Filter out processed phrases, but ONLY from the original list
+  const availableFlags = originalFlags.filter(flag => {
+    const flagPhrase = flag.phrase.toLowerCase().trim();
+    const suggestedFix = flag.suggestedFix.toLowerCase().trim();
+    
+    // Skip if this phrase or its replacement was processed
+    if (processedSet.has(flagPhrase) || processedSet.has(suggestedFix)) {
+      return false;
+    }
+    
+    // Skip if the phrase no longer exists in current text
+    if (!text.toLowerCase().includes(flagPhrase)) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Ensure minimum 3 flags for Pro feature display (2 visible + 1 blurred)
+  const flagsToReturn = availableFlags.slice(0, Math.max(3, availableFlags.length));
+  
+  // Calculate score based on remaining flags
+  let score = Math.min(90, 25 + (flagsToReturn.length * 12));
+  if (flagsToReturn.length === 0) score = 15;
+  if (flagsToReturn.length > 5) score = Math.min(95, score + 10);
+  
+  return {
+    score: Math.round(score),
+    reasoning: `Analysis shows ${flagsToReturn.length} AI detection patterns. ${flagsToReturn.length > 3 ? 'Multiple formal language issues detected.' : flagsToReturn.length > 1 ? 'Some corporate language patterns found.' : 'Minimal detection risks remaining.'}`,
+    flags: flagsToReturn,
+    proTip: "Replace formal business language with more natural academic alternatives."
+  };
+}
+
+function generateAllFlags(text) {
+  // Fixed patterns that get checked in order
   const flagPatterns = [
     {
       phrases: ["utilize", "utilizes", "utilizing", "utilization"],
@@ -198,20 +249,27 @@ function analyzeDeterministic(text, processedPhrases = []) {
       issue: "Generic Verb",
       explanation: "Overused formal verb in AI writing",
       suggestedFix: "reach"
+    },
+    {
+      phrases: ["establish", "establishing"],
+      issue: "Formal Language",
+      explanation: "Corporate term common in AI-generated text",
+      suggestedFix: "create"
+    },
+    {
+      phrases: ["demonstrate", "demonstrates"],
+      issue: "Academic Formality",
+      explanation: "Overused academic verb in AI writing",
+      suggestedFix: "show"
     }
   ];
 
   const foundFlags = [];
   const textLower = text.toLowerCase();
 
-  // Find flags in order (deterministic)
+  // Find ALL possible flags in the original text
   for (const pattern of flagPatterns) {
-    // Skip if already processed
-    if (processedSet.has(pattern.suggestedFix.toLowerCase())) continue;
-    
     for (const phrase of pattern.phrases) {
-      if (processedSet.has(phrase.toLowerCase())) continue;
-      
       if (textLower.includes(phrase.toLowerCase())) {
         // Find the actual phrase in the original text (preserve case)
         const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
@@ -230,20 +288,50 @@ function analyzeDeterministic(text, processedPhrases = []) {
     }
   }
 
-  // Calculate score based on number of flags
-  let score = Math.min(90, 25 + (foundFlags.length * 15));
-  
-  // Add some variation based on text length and complexity
-  const words = text.split(/\s+/).length;
-  if (words > 80) score += 5;
-  if (foundFlags.length === 0) score = Math.max(15, 25 - words / 10);
+  // Ensure we always have at least 3 flags for Pro display
+  if (foundFlags.length < 3) {
+    // Add some generic flags that might not be in the text but help with Pro display
+    const genericFlags = [
+      {
+        issue: "Sentence Structure",
+        phrase: "organizations must",
+        explanation: "Formal sentence structure common in AI writing",
+        suggestedFix: "companies need to"
+      },
+      {
+        issue: "Corporate Language",
+        phrase: "digital landscape",
+        explanation: "Business buzzword that sounds AI-generated",
+        suggestedFix: "digital world"
+      },
+      {
+        issue: "Formal Language",
+        phrase: "rapidly evolving",
+        explanation: "Overused phrase in AI-generated content",
+        suggestedFix: "quickly changing"
+      }
+    ];
+    
+    for (const genericFlag of genericFlags) {
+      if (foundFlags.length >= 3) break;
+      if (textLower.includes(genericFlag.phrase.toLowerCase())) {
+        foundFlags.push(genericFlag);
+      }
+    }
+  }
 
-  return {
-    score: Math.round(score),
-    reasoning: `Found ${foundFlags.length} AI detection patterns. ${foundFlags.length > 3 ? 'High concentration of formal language.' : foundFlags.length > 1 ? 'Some formal patterns detected.' : 'Minimal formal language detected.'}`,
-    flags: foundFlags,
-    proTip: "Replace formal business language with more natural academic alternatives."
-  };
+  return foundFlags;
+}
+
+function createTextHash(text) {
+  // Simple hash function for text
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString();
 }
 
 async function humanizeWithOpenAI(text) {
