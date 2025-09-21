@@ -471,7 +471,7 @@ Return ONLY the rewritten text.`;
   const result = await callOpenAI([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt }
-  ], 0.9); // Maximum creativity for human variation
+  ], 0.4); // Maximum creativity for human variation
 
   return result.trim();
 }
@@ -509,3 +509,4 @@ async function callOpenAI(messages, temperature = 0.3) {
   
   return content;
 }
+
