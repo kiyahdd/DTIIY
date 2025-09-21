@@ -367,11 +367,11 @@ function generateAllFlags(text) {
       if (textLower.includes(phrase.toLowerCase())) {
         // Check context exclusions
         if (pattern.contextExclusions && hasContextExclusion(text, phrase, pattern.contextExclusions)) {
-          continue; // Skip this phrase due to context
+          continue;
         }
 
-        // Find actual phrase preserving case
-        const regex = new RegExp('\\b' + phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+        // FIXED: Use case-insensitive search without strict word boundaries
+        const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         const match = text.match(regex);
         
         if (match) {
