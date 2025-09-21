@@ -36,10 +36,10 @@ app.post("/analyze", async (req, res) => {
   try {
     const { essay, action = "analyze", style, instructions, processed_phrases, session_id } = req.body || {};
     
-    if (!essay || typeof essay !== "string" || essay.trim().length < 50 || essay.length > 500) {
+    if (!essay || typeof essay !== "string" || essay.trim().length < 50 || essay.length > 10000) {
       return res.status(200).json({ 
         error: true, 
-        message: "Text must be 50–500 characters." 
+        message: "Text must be 50–10,000 characters." 
       });
     }
 
