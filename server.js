@@ -31,7 +31,7 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 // Main analyze endpoint
 app.post("/analyze", async (req, res) => {
   try {
-    const { essay, action = "analyze", style, instructions } = req.body || {};
+    const { essay, action = "analyze", style, instructions, processed_phrases } = req.body || {};
     
     if (!essay || typeof essay !== "string" || essay.trim().length < 50 || essay.length > 500) {
       return res.status(200).json({ 
@@ -59,7 +59,7 @@ app.post("/analyze", async (req, res) => {
     }
 
     // Main analysis
-    const analysis = await analyzeWithOpenAI(essay);
+    const analysis = await analyzeWithOpenAI(essay, processed_phrases);
     
     // Try to get humanized text (non-blocking)
     try {
@@ -89,7 +89,16 @@ app.listen(PORT, () => {
 // Global tracking of suggested phrases to prevent re-flagging
 let suggestedPhrases = new Set();
 
-async function analyzeWithOpenAI(text) {
+async function analyzeWithOpenAI(text, processedPhrases = []) {
+  // Add processed phrases to our tracking set
+  if (Array.isArray(processedPhrases)) {
+    processedPhrases.forEach(phrase => {
+      if (phrase && typeof phrase === 'string') {
+        suggestedPhrases.add(phrase.trim().toLowerCase());
+      }
+    });
+  }
+  
   const systemPrompt = `You are a highly sensitive AI detector that identifies even subtle AI-generated patterns in academic writing.
 
 Return STRICT JSON with these exact keys:
@@ -276,4 +285,3 @@ async function callOpenAI(messages, temperature = 0.3) {
   
   return content;
 }
-
