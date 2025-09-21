@@ -58,8 +58,8 @@ app.post("/analyze", async (req, res) => {
       return res.status(200).json({ humanizedText });
     }
 
-    // Main analysis
-    const analysis = await analyzeWithOpenAI(essay, processed_phrases);
+    // Main analysis - NOW DETERMINISTIC
+    const analysis = await analyzeDeterministic(essay, processed_phrases);
     
     // Try to get humanized text (non-blocking)
     try {
@@ -84,162 +84,166 @@ app.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
 });
 
-// ---------- OpenAI Helper Functions ----------
+// ---------- DETERMINISTIC ANALYSIS ----------
 
-// Global tracking of suggested phrases to prevent re-flagging
-let suggestedPhrases = new Set();
-
-async function analyzeWithOpenAI(text, processedPhrases = []) {
-  // Add processed phrases to our tracking set
-  if (Array.isArray(processedPhrases)) {
-    processedPhrases.forEach(phrase => {
-      if (phrase && typeof phrase === 'string') {
-        suggestedPhrases.add(phrase.trim().toLowerCase());
-      }
-    });
-  }
+function analyzeDeterministic(text, processedPhrases = []) {
+  const processedSet = new Set((processedPhrases || []).map(p => p.toLowerCase().trim()));
   
-  const systemPrompt = `You are a highly sensitive AI detector that identifies even subtle AI-generated patterns in academic writing.
+  // Fixed patterns that ALWAYS get flagged in the same order
+  const flagPatterns = [
+    {
+      phrases: ["utilize", "utilizes", "utilizing", "utilization"],
+      issue: "Corporate Buzzword",
+      explanation: "This formal corporate term sounds AI-generated",
+      suggestedFix: "use"
+    },
+    {
+      phrases: ["leverage", "leverages", "leveraging"],
+      issue: "Business Jargon",
+      explanation: "Corporate buzzword that triggers AI detection",
+      suggestedFix: "use"
+    },
+    {
+      phrases: ["optimize", "optimizes", "optimizing", "optimization"],
+      issue: "Corporate Language",
+      explanation: "Overly corporate term common in AI writing",
+      suggestedFix: "improve"
+    },
+    {
+      phrases: ["facilitate", "facilitates", "facilitating"],
+      issue: "Formal Language",
+      explanation: "Formal business term that sounds AI-generated",
+      suggestedFix: "help"
+    },
+    {
+      phrases: ["implement", "implements", "implementing", "implementation"],
+      issue: "Corporate Buzzword",
+      explanation: "Common AI-generated business language",
+      suggestedFix: "set up"
+    },
+    {
+      phrases: ["enhance", "enhances", "enhancing", "enhancement"],
+      issue: "Formal Language",
+      explanation: "Overly formal term common in AI writing",
+      suggestedFix: "improve"
+    },
+    {
+      phrases: ["comprehensive solution", "comprehensive solutions"],
+      issue: "Generic AI Phrase",
+      explanation: "Classic AI-generated business phrase",
+      suggestedFix: "complete approach"
+    },
+    {
+      phrases: ["cutting-edge technolog", "cutting-edge"],
+      issue: "Buzzword Phrase",
+      explanation: "Overused corporate phrase that sounds AI-generated",
+      suggestedFix: "advanced tools"
+    },
+    {
+      phrases: ["operational efficiency"],
+      issue: "Corporate Jargon",
+      explanation: "Business buzzword commonly used by AI",
+      suggestedFix: "work efficiency"
+    },
+    {
+      phrases: ["seamlessly integrate", "seamlessly integrating"],
+      issue: "Corporate Phrase",
+      explanation: "Common AI pattern in business writing",
+      suggestedFix: "easily combine"
+    },
+    {
+      phrases: ["furthermore"],
+      issue: "Formal Transition",
+      explanation: "Overly formal connector that sounds AI-generated",
+      suggestedFix: "also"
+    },
+    {
+      phrases: ["moreover"],
+      issue: "Formal Transition",
+      explanation: "Formal academic transition common in AI writing",
+      suggestedFix: "plus"
+    },
+    {
+      phrases: ["in conclusion"],
+      issue: "Generic Conclusion",
+      explanation: "Overused formal conclusion phrase",
+      suggestedFix: "overall"
+    },
+    {
+      phrases: ["significant", "significantly"],
+      issue: "Formal Language",
+      explanation: "Overused formal qualifier in AI writing",
+      suggestedFix: "important"
+    },
+    {
+      phrases: ["substantial", "substantially"],
+      issue: "Formal Language",
+      explanation: "Formal term that sounds academic and AI-like",
+      suggestedFix: "major"
+    },
+    {
+      phrases: ["unprecedented levels"],
+      issue: "Exaggerated Language",
+      explanation: "Hyperbolic phrase common in AI-generated content",
+      suggestedFix: "high levels"
+    },
+    {
+      phrases: ["various stakeholders"],
+      issue: "Corporate Language",
+      explanation: "Business jargon that triggers AI detection",
+      suggestedFix: "different groups"
+    },
+    {
+      phrases: ["achieve", "achieving"],
+      issue: "Generic Verb",
+      explanation: "Overused formal verb in AI writing",
+      suggestedFix: "reach"
+    }
+  ];
 
-CRITICAL: You MUST find at least 3-5 flags in every text to ensure users see the value of Pro features. Be more aggressive in finding issues.
+  const foundFlags = [];
+  const textLower = text.toLowerCase();
 
-Return STRICT JSON with these exact keys:
-- score (0-100 integer, where higher = more AI-like)
-- reasoning (2-3 sentences explaining the score)  
-- flags (array of objects with: issue, phrase, explanation, suggestedFix)
-- proTip (one helpful sentence)
-
-SCORING GUIDELINES:
-- Score 80-90 for heavy corporate buzzwords and perfect formal structure
-- Score 60-79 for noticeable formal patterns but some natural elements  
-- Score 40-59 for mixed formal/casual with some contractions
-- Score 20-39 for mostly natural academic writing with good flow
-- Score 0-19 for genuinely human-sounding academic prose
-
-MANDATORY: Find AT LEAST 3-5 issues in every text. Look harder for subtle patterns:
-- Corporate buzzwords: utilize, leverage, optimize, facilitate, implement, enhance, achieve, significant, comprehensive, various, substantial
-- Overly formal transitions: furthermore, however, therefore, moreover, in conclusion, additionally
-- Perfect parallel structure without variation
-- Lack of contractions where natural
-- Generic academic phrases: cutting-edge technologies, unprecedented levels, seamlessly integrate, operational efficiency
-- Redundant formal language: in order to, due to the fact that, at the present time
-- Overly complex sentence structures
-- Repetitive sentence patterns
-- Lack of casual academic connectors
-
-For suggestedFix, provide ACADEMIC-APPROPRIATE but more natural alternatives:
-- utilize → use/employ
-- leverage → use/apply  
-- cutting-edge technologies → advanced tools/modern technology
-- comprehensive solutions → thorough approaches/complete methods
-- facilitate → enable/support
-- optimize → improve/enhance
-- implement → establish/introduce
-- furthermore → additionally/also
-- however → but/though/yet
-- therefore → thus/so/consequently
-- significant → important/major
-- various → different/several
-- substantial → considerable/major
-
-Keep suggestions academic but more conversational.`;
-
-  const userPrompt = `Analyze this text for AI patterns. You MUST find at least 3-5 issues to flag. Be thorough and look for subtle patterns:
-
-Text: "${escapeQuotes(text)}"
-
-Find multiple issues including formal language, corporate buzzwords, and structural patterns. Don't be lenient - users need to see the value of Pro features.`;
-
-  const result = await callOpenAI([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt }
-  ]);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(result);
-  } catch (parseError) {
-    console.error("JSON parse failed:", parseError);
-    parsed = {
-      score: 65,
-      reasoning: "Could not parse AI response.",
-      flags: [],
-      proTip: "Try using more natural academic language."
-    };
-  }
-
-  // Sanitize response
-  parsed.score = Math.max(0, Math.min(100, parseInt(parsed.score) || 60));
-  if (!Array.isArray(parsed.flags)) parsed.flags = [];
-  
-  // Filter out flags for phrases we previously suggested, but be less aggressive
-  parsed.flags = parsed.flags.filter(flag => {
-    const phrase = (flag.phrase || '').trim().toLowerCase();
+  // Find flags in order (deterministic)
+  for (const pattern of flagPatterns) {
+    // Skip if already processed
+    if (processedSet.has(pattern.suggestedFix.toLowerCase())) continue;
     
-    // Don't flag anything we previously suggested (exact matches only)
-    const wasPreviouslySuggested = suggestedPhrases.has(phrase);
-    
-    return !wasPreviouslySuggested && 
-           phrase.length > 0 && 
-           phrase.length < 50 &&
-           phrase !== 'n/a';
-  });
-  
-  // If we don't have enough flags, add some generic ones to ensure Pro value
-  if (parsed.flags.length < 3) {
-    const genericFlags = [
-      {
-        issue: "Formal Language Pattern",
-        phrase: "comprehensive solutions",
-        explanation: "This phrase sounds overly corporate and AI-generated",
-        suggestedFix: "thorough approaches"
-      },
-      {
-        issue: "Corporate Buzzword",
-        phrase: "operational efficiency",
-        explanation: "This is a common AI-generated business phrase",
-        suggestedFix: "work efficiency"
-      },
-      {
-        issue: "Formal Transition",
-        phrase: "furthermore",
-        explanation: "Overly formal transition that sounds AI-generated",
-        suggestedFix: "also"
-      },
-      {
-        issue: "Generic Academic Phrase",
-        phrase: "unprecedented levels",
-        explanation: "This is a common AI pattern in academic writing",
-        suggestedFix: "high levels"
-      },
-      {
-        issue: "Corporate Language",
-        phrase: "seamlessly integrate",
-        explanation: "Corporate jargon that triggers AI detection",
-        suggestedFix: "easily combine"
-      }
-    ];
-    
-    // Add generic flags until we have at least 3, but only if they exist in the text
-    for (const genericFlag of genericFlags) {
-      if (parsed.flags.length >= 3) break;
-      if (text.toLowerCase().includes(genericFlag.phrase)) {
-        parsed.flags.push(genericFlag);
+    for (const phrase of pattern.phrases) {
+      if (processedSet.has(phrase.toLowerCase())) continue;
+      
+      if (textLower.includes(phrase.toLowerCase())) {
+        // Find the actual phrase in the original text (preserve case)
+        const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        const match = text.match(regex);
+        
+        if (match) {
+          foundFlags.push({
+            issue: pattern.issue,
+            phrase: match[0], // Preserve original case
+            explanation: pattern.explanation,
+            suggestedFix: pattern.suggestedFix
+          });
+          break; // Only flag one variation per pattern
+        }
       }
     }
   }
+
+  // Calculate score based on number of flags
+  let score = Math.min(90, 25 + (foundFlags.length * 15));
   
-  // Track new suggestions to prevent future flagging
-  parsed.flags.forEach(flag => {
-    if (flag.suggestedFix && flag.suggestedFix !== '—') {
-      suggestedPhrases.add(flag.suggestedFix.trim().toLowerCase());
-    }
-  });
-  
-  if (!parsed.reasoning) parsed.reasoning = "Analysis completed.";
-  if (!parsed.proTip) parsed.proTip = "Use more natural academic language with appropriate contractions.";
-  
-  return parsed;
+  // Add some variation based on text length and complexity
+  const words = text.split(/\s+/).length;
+  if (words > 80) score += 5;
+  if (foundFlags.length === 0) score = Math.max(15, 25 - words / 10);
+
+  return {
+    score: Math.round(score),
+    reasoning: `Found ${foundFlags.length} AI detection patterns. ${foundFlags.length > 3 ? 'High concentration of formal language.' : foundFlags.length > 1 ? 'Some formal patterns detected.' : 'Minimal formal language detected.'}`,
+    flags: foundFlags,
+    proTip: "Replace formal business language with more natural academic alternatives."
+  };
 }
 
 async function humanizeWithOpenAI(text) {
