@@ -56,7 +56,7 @@ app.post("/analyze", async (req, res) => {
       return res.status(200).json({ humanizedText });
     }
 
-    if (action === "humanize") {
+    if (action === "humanize" || action === "rewrite") {
       const humanizedText = await humanizeWithOpenAI(essay);
       return res.status(200).json({ humanizedText });
     }
@@ -126,10 +126,11 @@ function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
   // Ensure minimum 3 flags for Pro feature display (2 visible + 1 blurred)
   const flagsToReturn = availableFlags.slice(0, Math.max(3, availableFlags.length));
   
-  // Calculate score based on remaining flags
-  let score = Math.min(90, 25 + (flagsToReturn.length * 12));
+  // Calculate score based on weighted flags
+  let score = 25 + flagsToReturn.reduce((sum, flag) => sum + (flag.weight || 12), 0);
   if (flagsToReturn.length === 0) score = 15;
   if (flagsToReturn.length > 5) score = Math.min(95, score + 10);
+  score = Math.min(95, score); // Cap at 95%
   
   return {
     score: Math.round(score),
@@ -140,187 +141,269 @@ function analyzeDeterministic(text, processedPhrases = [], sessionId = null) {
 }
 
 function generateAllFlags(text) {
-  // Fixed patterns that get checked in order
   const flagPatterns = [
+    // CORPORATE/BUSINESS PATTERNS
     {
       phrases: ["utilize", "utilizes", "utilizing", "utilization"],
-      issue: "Corporate Buzzword",
+      severity: "HIGH", weight: 15, issue: "Corporate Buzzword",
       explanation: "This formal corporate term sounds AI-generated",
       suggestedFix: "use"
     },
     {
       phrases: ["leverage", "leverages", "leveraging"],
-      issue: "Business Jargon",
+      severity: "HIGH", weight: 15, issue: "Business Jargon", 
       explanation: "Corporate buzzword that triggers AI detection",
       suggestedFix: "use"
     },
     {
-      phrases: ["optimize", "optimizes", "optimizing", "optimization"],
-      issue: "Corporate Language",
+      phrases: ["optimize", "optimizes", "optimizing"],
+      severity: "HIGH", weight: 14, issue: "Corporate Language",
       explanation: "Overly corporate term common in AI writing",
       suggestedFix: "improve"
     },
     {
       phrases: ["facilitate", "facilitates", "facilitating"],
-      issue: "Formal Language",
+      severity: "HIGH", weight: 15, issue: "Formal Language",
       explanation: "Formal business term that sounds AI-generated",
       suggestedFix: "help"
     },
     {
-      phrases: ["implement", "implements", "implementing", "implementation"],
-      issue: "Corporate Buzzword",
-      explanation: "Common AI-generated business language",
-      suggestedFix: "set up"
-    },
-    {
-      phrases: ["enhance", "enhances", "enhancing", "enhancement"],
-      issue: "Formal Language",
-      explanation: "Overly formal term common in AI writing",
-      suggestedFix: "improve"
-    },
-    {
       phrases: ["comprehensive solution", "comprehensive solutions"],
-      issue: "Generic AI Phrase",
+      severity: "CRITICAL", weight: 20, issue: "Generic AI Phrase",
       explanation: "Classic AI-generated business phrase",
       suggestedFix: "complete approach"
     },
     {
-      phrases: ["cutting-edge technolog", "cutting-edge"],
-      issue: "Buzzword Phrase",
-      explanation: "Overused corporate phrase that sounds AI-generated",
-      suggestedFix: "advanced tools"
-    },
-    {
-      phrases: ["operational efficiency"],
-      issue: "Corporate Jargon",
-      explanation: "Business buzzword commonly used by AI",
-      suggestedFix: "work efficiency"
-    },
-    {
       phrases: ["seamlessly integrate", "seamlessly integrating"],
-      issue: "Corporate Phrase",
+      severity: "CRITICAL", weight: 18, issue: "Corporate Phrase",
       explanation: "Common AI pattern in business writing",
       suggestedFix: "easily combine"
     },
     {
-      phrases: ["furthermore"],
-      issue: "Formal Transition",
+      phrases: ["operational efficiency"],
+      severity: "HIGH", weight: 16, issue: "Corporate Jargon",
+      explanation: "Business buzzword commonly used by AI",
+      suggestedFix: "work efficiency"
+    },
+
+    // ACADEMIC WRITING PATTERNS
+    {
+      phrases: ["it is evident that", "it is clear that"],
+      severity: "HIGH", weight: 14, issue: "Academic Formality",
+      explanation: "Overly formal academic phrase common in AI writing",
+      suggestedFix: "clearly"
+    },
+    {
+      phrases: ["the results indicate", "the data indicates"],
+      severity: "MEDIUM", weight: 10, issue: "Scientific Language",
+      explanation: "Formal research language that sounds AI-generated",
+      suggestedFix: "our results show"
+    },
+    {
+      phrases: ["further research is needed", "additional research is required"],
+      severity: "HIGH", weight: 15, issue: "Academic Cliché",
+      explanation: "Overused conclusion phrase in AI-generated academic writing",
+      suggestedFix: "more studies could explore this"
+    },
+    {
+      phrases: ["throughout history", "throughout the ages"],
+      severity: "MEDIUM", weight: 9, issue: "Historical Cliché",
+      explanation: "Generic historical phrase common in AI writing",
+      suggestedFix: "over time"
+    },
+    {
+      phrases: ["it can be argued that", "one could argue that"],
+      severity: "MEDIUM", weight: 11, issue: "Academic Hedging",
+      explanation: "Formal academic hedging that sounds AI-generated",
+      suggestedFix: "some might say"
+    },
+    {
+      phrases: ["the author demonstrates", "the writer demonstrates"],
+      severity: "MEDIUM", weight: 9, issue: "Literary Analysis",
+      explanation: "Common formal phrase in AI-generated literary analysis",
+      suggestedFix: "the author shows",
+      contextExclusions: ["protest", "against", "march"]
+    },
+    {
+      phrases: ["this exemplifies", "this illustrates"],
+      severity: "MEDIUM", weight: 8, issue: "Academic Language",
+      explanation: "Formal analytical language common in AI writing",
+      suggestedFix: "this shows"
+    },
+
+    // TRANSITIONS AND CONNECTORS  
+    {
+      phrases: ["furthermore", "moreover"],
+      severity: "MEDIUM", weight: 10, issue: "Formal Transition",
       explanation: "Overly formal connector that sounds AI-generated",
       suggestedFix: "also"
     },
     {
-      phrases: ["moreover"],
-      issue: "Formal Transition",
-      explanation: "Formal academic transition common in AI writing",
+      phrases: ["in addition to this", "in addition to that"],
+      severity: "MEDIUM", weight: 9, issue: "Formal Transition",
+      explanation: "Wordy formal transition common in AI writing",
       suggestedFix: "plus"
     },
     {
-      phrases: ["in conclusion"],
-      issue: "Generic Conclusion",
+      phrases: ["consequently", "as a consequence"],
+      severity: "MEDIUM", weight: 8, issue: "Formal Connector",
+      explanation: "Formal logical connector that sounds AI-generated",
+      suggestedFix: "so"
+    },
+    {
+      phrases: ["in conclusion", "to conclude"],
+      severity: "MEDIUM", weight: 10, issue: "Generic Conclusion",
       explanation: "Overused formal conclusion phrase",
       suggestedFix: "overall"
     },
+
+    // PERSONAL STATEMENT PATTERNS
+    {
+      phrases: ["I have always been passionate about", "I am passionate about"],
+      severity: "HIGH", weight: 16, issue: "Personal Statement Cliché",
+      explanation: "Overused phrase in AI-generated personal statements",
+      suggestedFix: "I really care about"
+    },
+    {
+      phrases: ["this experience taught me", "this taught me"],
+      severity: "MEDIUM", weight: 11, issue: "Reflection Cliché",
+      explanation: "Common AI pattern in personal reflections",
+      suggestedFix: "I learned"
+    },
+    {
+      phrases: ["I realized the importance of", "I came to understand"],
+      severity: "MEDIUM", weight: 10, issue: "Personal Insight",
+      explanation: "Generic insight phrase common in AI writing",
+      suggestedFix: "I saw how important"
+    },
+
+    // SCIENTIFIC/TECHNICAL PATTERNS
+    {
+      phrases: ["the process involves", "the method involves"],
+      severity: "MEDIUM", weight: 8, issue: "Technical Language",
+      explanation: "Formal technical language that sounds AI-generated",
+      suggestedFix: "the process includes"
+    },
+    {
+      phrases: ["optimal performance", "maximum efficiency"],
+      severity: "HIGH", weight: 13, issue: "Technical Jargon",
+      explanation: "Technical buzzwords common in AI writing",
+      suggestedFix: "best performance"
+    },
+    {
+      phrases: ["it is well established that", "it is widely known that"],
+      severity: "HIGH", weight: 14, issue: "Scientific Authority",
+      explanation: "Formal scientific authority phrase that sounds AI-generated",
+      suggestedFix: "we know that"
+    },
+
+    // QUALIFYING LANGUAGE
     {
       phrases: ["significant", "significantly"],
-      issue: "Formal Language",
+      severity: "MEDIUM", weight: 8, issue: "Formal Language",
       explanation: "Overused formal qualifier in AI writing",
-      suggestedFix: "important"
+      suggestedFix: "important",
+      contextExclusions: ["other", "relationship", "figure", "digit", "statistical"]
     },
     {
       phrases: ["substantial", "substantially"],
-      issue: "Formal Language",
-      explanation: "Formal term that sounds academic and AI-like",
+      severity: "MEDIUM", weight: 9, issue: "Formal Language",
+      explanation: "Formal qualifier common in AI writing",
       suggestedFix: "major"
     },
     {
-      phrases: ["unprecedented levels"],
-      issue: "Exaggerated Language",
-      explanation: "Hyperbolic phrase common in AI-generated content",
-      suggestedFix: "high levels"
+      phrases: ["considerable", "considerably"],
+      severity: "MEDIUM", weight: 8, issue: "Formal Language",
+      explanation: "Formal qualifier that sounds AI-generated",
+      suggestedFix: "large"
     },
+
+    // ACTION VERBS
     {
-      phrases: ["various stakeholders"],
-      issue: "Corporate Language",
-      explanation: "Business jargon that triggers AI detection",
-      suggestedFix: "different groups"
-    },
-    {
-      phrases: ["achieve", "achieving"],
-      issue: "Generic Verb",
-      explanation: "Overused formal verb in AI writing",
-      suggestedFix: "reach"
+      phrases: ["implement", "implements", "implementing"],
+      severity: "HIGH", weight: 12, issue: "Corporate Buzzword",
+      explanation: "Common AI-generated business language",
+      suggestedFix: "set up",
+      contextExclusions: ["policy", "law", "regulation", "government"]
     },
     {
       phrases: ["establish", "establishing"],
-      issue: "Formal Language",
+      severity: "MEDIUM", weight: 9, issue: "Formal Language",
       explanation: "Corporate term common in AI-generated text",
       suggestedFix: "create"
     },
     {
+      phrases: ["acquire", "acquiring"],
+      severity: "MEDIUM", weight: 8, issue: "Formal Language",
+      explanation: "Formal verb common in AI writing",
+      suggestedFix: "get"
+    },
+    {
+      phrases: ["maintain", "maintaining"],
+      severity: "LOW", weight: 6, issue: "Formal Language",
+      explanation: "Slightly formal verb that can sound AI-generated",
+      suggestedFix: "keep"
+    },
+    {
       phrases: ["demonstrate", "demonstrates"],
-      issue: "Academic Formality",
+      severity: "MEDIUM", weight: 8, issue: "Academic Formality", 
       explanation: "Overused academic verb in AI writing",
-      suggestedFix: "show"
+      suggestedFix: "show",
+      contextExclusions: ["affection", "love", "protest", "against", "march"]
+    },
+    {
+      phrases: ["enhance", "enhances", "enhancing"],
+      severity: "MEDIUM", weight: 9, issue: "Formal Language", 
+      explanation: "Overly formal term common in AI writing",
+      suggestedFix: "improve"
     }
   ];
 
   const foundFlags = [];
   const textLower = text.toLowerCase();
 
-  // Find ALL possible flags in the original text
   for (const pattern of flagPatterns) {
     for (const phrase of pattern.phrases) {
       if (textLower.includes(phrase.toLowerCase())) {
-        // Find the actual phrase in the original text (preserve case)
-        const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        // Check context exclusions
+        if (pattern.contextExclusions && hasContextExclusion(text, phrase, pattern.contextExclusions)) {
+          continue; // Skip this phrase due to context
+        }
+
+        // Find actual phrase preserving case
+        const regex = new RegExp('\\b' + phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
         const match = text.match(regex);
         
         if (match) {
           foundFlags.push({
             issue: pattern.issue,
-            phrase: match[0], // Preserve original case
+            phrase: match[0],
             explanation: pattern.explanation,
-            suggestedFix: pattern.suggestedFix
+            suggestedFix: pattern.suggestedFix,
+            weight: pattern.weight,
+            severity: pattern.severity
           });
-          break; // Only flag one variation per pattern
+          break;
         }
       }
     }
   }
 
-  // Ensure we always have at least 3 flags for Pro display
-  if (foundFlags.length < 3) {
-    // Add some generic flags that might not be in the text but help with Pro display
-    const genericFlags = [
-      {
-        issue: "Sentence Structure",
-        phrase: "organizations must",
-        explanation: "Formal sentence structure common in AI writing",
-        suggestedFix: "companies need to"
-      },
-      {
-        issue: "Corporate Language",
-        phrase: "digital landscape",
-        explanation: "Business buzzword that sounds AI-generated",
-        suggestedFix: "digital world"
-      },
-      {
-        issue: "Formal Language",
-        phrase: "rapidly evolving",
-        explanation: "Overused phrase in AI-generated content",
-        suggestedFix: "quickly changing"
-      }
-    ];
-    
-    for (const genericFlag of genericFlags) {
-      if (foundFlags.length >= 3) break;
-      if (textLower.includes(genericFlag.phrase.toLowerCase())) {
-        foundFlags.push(genericFlag);
-      }
-    }
-  }
-
   return foundFlags;
+}
+
+function hasContextExclusion(text, phrase, exclusions) {
+  if (!exclusions || exclusions.length === 0) return false;
+  
+  const phraseIndex = text.toLowerCase().indexOf(phrase.toLowerCase());
+  if (phraseIndex === -1) return false;
+  
+  // Check 30 characters before and after the phrase
+  const start = Math.max(0, phraseIndex - 30);
+  const end = Math.min(text.length, phraseIndex + phrase.length + 30);
+  const context = text.substring(start, end).toLowerCase();
+  
+  return exclusions.some(exclusion => context.includes(exclusion.toLowerCase()));
 }
 
 function createTextHash(text) {
