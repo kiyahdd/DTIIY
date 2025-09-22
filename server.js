@@ -1,5 +1,4 @@
-// server.js — DontTurnItInYet (Scoring aligned + robust flags)
-// Drop-in: replaces your current file. Non-score behaviors preserved.
+// server.js — robust flags + GPTZero-style scoring + SUS bands
 
 import express from "express";
 import cors from "cors";
@@ -13,13 +12,13 @@ app.use(cors());
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-// --- Optional tiny calibration to nudge % if you ever need it ---
+// Optional tiny calibration to nudge site-wide % if you ever need it
 const CAL_SLOPE = Number(process.env.SUS_CAL_SLOPE || 1.0); // 1 = no change
 const CAL_OFFSET = Number(process.env.SUS_CAL_OFFSET || 0);  // 0 = no change
 
 const scoreCache = new Map();
 
-// ============ API ============
+// ================== API ==================
 app.post("/analyze", async (req, res) => {
   try {
     const { essay, action = "analyze", flags = [], iteration = 1 } = req.body || {};
@@ -34,7 +33,9 @@ app.post("/analyze", async (req, res) => {
     if (action === "fix_flags") {
       const fixedText = await fixSpecificFlags(essay, flags);
       const originalScore = await getGPTZeroCompatibleScore(essay);
-      const newScore = await getGPTZeroCompatibleScore(fixedText);
+      const newScoreRaw   = await getGPTZeroCompatibleScore(fixedText);
+      const fixedFlags    = await detectWithFallback(fixedText);
+      const newScore      = calibrateByFlags(newScoreRaw, fixedFlags);
 
       return res.status(200).json({
         fixedText,
@@ -43,25 +44,29 @@ app.post("/analyze", async (req, res) => {
         newScore,
         originalSus: toSus(originalScore),
         newSus: toSus(newScore),
+        flags: fixedFlags.slice(0, 10)
       });
     }
 
     if (action === "rewrite" || action === "humanize") {
       const humanized = await reliableHumanize(essay, iteration);
-      const score = await getGPTZeroCompatibleScore(humanized);
-      return res.status(200).json({ humanizedText: humanized, newScore: score, sus: toSus(score) });
+      const scoreRaw  = await getGPTZeroCompatibleScore(humanized);
+      const flagsNew  = await detectWithFallback(humanized);
+      const score     = calibrateByFlags(scoreRaw, flagsNew);
+      return res.status(200).json({ humanizedText: humanized, newScore: score, sus: toSus(score), flags: flagsNew.slice(0,10) });
     }
 
     // Main analysis
-    const flagsFound = detectRealAIPatterns(essay);
-    const score = await getGPTZeroCompatibleScore(essay);
+    const flagsFound = await detectWithFallback(essay); // regex + LLM rescue if needed
+    const scoreRaw   = await getGPTZeroCompatibleScore(essay);
+    const score      = calibrateByFlags(scoreRaw, flagsFound);
 
     return res.status(200).json({
       score: Math.round(score),
       sus: toSus(score),
       reasoning: getGPTZeroReasoning(score, flagsFound.length),
       flags: flagsFound.slice(0, 10),
-      proTip: getRealisticTip(score),
+      proTip: getRealisticTip(score)
     });
 
   } catch (err) {
@@ -71,13 +76,13 @@ app.post("/analyze", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend running on ${PORT} — GPTZero-aligned scoring + robust flags`);
+  console.log(`Backend running on ${PORT} — robust flags + GPTZero-style scoring`);
 });
 
-// ============ SCORING (the “perfect” one you liked) ============
+// ================== SCORING (strict, numeric-only) ==================
 async function getGPTZeroCompatibleScore(text) {
-  const textHash = createTextHash(text);
-  if (scoreCache.has(textHash)) return scoreCache.get(textHash);
+  const key = createTextHash(text);
+  if (scoreCache.has(key)) return scoreCache.get(key);
 
   const prompt = `You are an expert AI detection system like GPTZero and Turnitin. Analyze this text and rate its AI detection risk from 0-100%.
 
@@ -88,12 +93,7 @@ SCORING GUIDELINES:
 - 66-85%: Strong AI patterns—formal, repetitive, generic phrasing, lacks personality
 - 86-100%: Obviously AI-generated with robotic phrasing and structure
 
-Consider these triggers:
-- Overuse of formal transitions (furthermore, moreover, in conclusion)
-- Corporate buzzwords (utilize, leverage, facilitate, optimize, implement)
-- Generic academic phrases (it is important to note, plays a crucial role)
-- Repetitive sentence structures, low burstiness
-- Overly perfect grammar without human quirks
+Consider triggers: formal transitions (furthermore, moreover, in conclusion), corporate buzzwords (utilize, leverage, facilitate, optimize, implement), generic academic phrases, repetitive structure (low burstiness), overly perfect grammar.
 
 Text: "${String(text).replace(/"/g, '\\"')}"
 
@@ -105,31 +105,43 @@ Respond with just a number 0-100.`;
         { role: "system", content: "You are a precise AI detection expert. Always respond with just a number 0-100." },
         { role: "user", content: prompt }
       ],
-      0.1 // low temp => stable
+      0.1
     );
-
-    const raw = (result || "").trim();
-    const score = parseInt(raw, 10);
-    if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error("non-numeric");
-
-    scoreCache.set(textHash, score);
-    return score;
+    const n = parseInt((result || "").trim(), 10);
+    if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error("non-numeric");
+    scoreCache.set(key, n);
+    return n;
   } catch {
-    // keep strict behavior: don’t guess; surface as error up the stack
     throw new Error("Analysis unavailable");
   }
 }
 
-function toSus(raw) {
-  const pct = Math.max(0, Math.min(100, Math.round(CAL_SLOPE * raw + CAL_OFFSET)));
-  if (pct >= 70) return { percent: pct, band: "high",   label: "SUS AF" };
-  if (pct >= 30) return { percent: pct, band: "medium", label: "KINDA SUS" };
-  return                 { percent: pct, band: "low",    label: "SUS FREE" };
+// If strong flags exist but LLM score is weirdly low, bump to realistic floor.
+function calibrateByFlags(rawScore, flags) {
+  const weightSum = flags.reduce((a, f) => a + (f.weight || 0), 0);
+  const highCount = flags.filter(f => f.severity === "high").length;
+
+  let adjusted = rawScore;
+
+  if (weightSum >= 40 || highCount >= 3) {
+    adjusted = Math.max(adjusted, 72); // ensure SUS AF
+  } else if (weightSum >= 25 || highCount >= 2) {
+    adjusted = Math.max(adjusted, 48); // ensure at least KINDA SUS
+  }
+  // Optional global nudge
+  adjusted = Math.round(Math.max(0, Math.min(100, CAL_SLOPE * adjusted + CAL_OFFSET)));
+  return adjusted;
 }
 
-// ============ FLAG DETECTOR (broad + morphology-aware) ============
+function toSus(pct) {
+  const n = Math.max(0, Math.min(100, Math.round(pct)));
+  if (n >= 70) return { percent: n, band: "high",   label: "SUS AF" };
+  if (n >= 30) return { percent: n, band: "medium", label: "KINDA SUS" };
+  return         { percent: n, band: "low",    label: "SUS FREE" };
+}
+
+// ================== FLAGGING ==================
 function detectRealAIPatterns(text) {
-  // Each pattern uses regex with word boundaries and flexible endings (ed/s/ing/ation…)
   const P = [
     // Corporate / buzzwords (HIGH)
     { rx: /\butili[sz]e(?:d|s|r|rs|ing|ation)?\b/gi, weight: 16, exp: "AI prefers 'utilize' over natural 'use'", fix: "use" },
@@ -139,6 +151,7 @@ function detectRealAIPatterns(text) {
     { rx: /\benhance(?:d|s|ing|ment)?\b/gi,          weight: 12, exp: "Overly formal verb",                      fix: "improve" },
     { rx: /\bfacilitat(?:e|es|ed|ing|ion)\b/gi,      weight: 12, exp: "Formal register; AI-like",                fix: "help" },
     { rx: /\bstreamlin(?:e|es|ed|ing)\b/gi,          weight: 11, exp: "Corporate process jargon",                fix: "simplify" },
+    { rx: /\bmaximize(?:d|s|ing|ation)?\b/gi,        weight: 11, exp: "Corporate/marketing verb",               fix: "increase" },
     { rx: /\bcutting[- ]edge\b/gi,                   weight: 11, exp: "Marketing-y phrasing",                    fix: "new" },
     { rx: /\bunprecedented\b/gi,                     weight: 11, exp: "Dramatic superlative",                    fix: "unusual" },
 
@@ -180,16 +193,55 @@ function detectRealAIPatterns(text) {
       });
     }
   }
-
-  // Highest-impact first
   return flags.sort((a, b) => b.weight - a.weight);
 }
 
-// ============ REWRITE (context-aware + progressive) ============
+// If regex finds few/none, ask the model to surface exact phrases to flag.
+async function detectWithFallback(text) {
+  const regexFlags = detectRealAIPatterns(text);
+  if (regexFlags.length >= 3) return regexFlags;
+
+  try {
+    const prompt = `Find up to 8 short phrases in this text that AI detectors flag (corporate buzzwords, formal transitions, generic academic clichés, robotic structure). 
+Return a JSON array of objects like [{ "phrase": "...", "issue": "...", "suggestedFix": "..." }]. 
+Use exact substrings from the text for "phrase". No commentary.
+
+Text:
+"""${text}"""`;
+
+    const out = await callOpenAI(
+      [
+        { role: "system", content: "Extract phrases precisely. Output only valid JSON array." },
+        { role: "user", content: prompt }
+      ],
+      0.2
+    );
+
+    let arr = [];
+    try { arr = JSON.parse(out); } catch { arr = []; }
+    const cleaned = Array.isArray(arr) ? arr.filter(x => x && x.phrase).map(x => ({
+      phrase: String(x.phrase),
+      explanation: String(x.issue || "Likely AI-sounding phrase"),
+      suggestedFix: String(x.suggestedFix || "rewrite naturally"),
+      weight: 12,
+      severity: "medium",
+      occurrences: (text.match(new RegExp(escapeRegex(String(x.phrase)), "g")) || []).length
+    })) : [];
+
+    const merged = [...regexFlags];
+    for (const f of cleaned) {
+      if (!merged.find(m => m.phrase.toLowerCase() === f.phrase.toLowerCase())) merged.push(f);
+    }
+    return merged.sort((a, b) => b.weight - a.weight);
+  } catch {
+    return regexFlags; // at least return what we have
+  }
+}
+
+// ================== REWRITE (progressive) ==================
 async function reliableHumanize(text, iteration = 1) {
-  // progressively more aggressive each pass
-  const aggressive = Math.max(0, Math.min(1, (iteration - 1) * 0.35)); // 1st mild, 2nd medium, 3rd spicy
-  return await humanizeWithOpenAI(text, aggressive);
+  const aggressiveness = Math.max(0, Math.min(1, (iteration - 1) * 0.35));
+  return await humanizeWithOpenAI(text, aggressiveness);
 }
 
 async function humanizeWithOpenAI(text, aggressiveness = 0) {
@@ -198,9 +250,9 @@ async function humanizeWithOpenAI(text, aggressiveness = 0) {
 - Vary sentence length (burstiness), mix simple + complex
 - Prefer conversational-academic tone over formal-corporate
 - Swap formal transitions (furthermore→also, moreover→plus, therefore→so)
-- Keep meaning; avoid flowery filler; keep facts intact`;
+- Keep meaning and facts intact; avoid filler`;
 
-  const user = `Rewrite gently${aggressiveness >= 0.7 ? " and restructure sentences freely" : aggressiveness >= 0.35 ? " with moderate restructuring" : ""} to reduce AI-detection risk while preserving meaning.
+  const user = `Rewrite${aggressiveness >= 0.7 ? " aggressively" : aggressiveness >= 0.35 ? " with moderate restructuring" : " gently"} to reduce AI-detection risk while preserving meaning.
 
 Text:
 """${text}"""
@@ -217,12 +269,11 @@ Return ONLY the rewritten text.`;
   return out.trim();
 }
 
-// ============ Fix specific phrases (safe + contextual) ============
+// ================== Fix specific phrases (contextual & safe) ==================
 async function fixSpecificFlags(fullText, flags) {
   if (!Array.isArray(flags) || flags.length === 0) return fullText;
   let text = fullText;
 
-  // replace from right-to-left to avoid shifting indices
   const ordered = [...flags].sort((a, b) =>
     text.lastIndexOf(a.phrase || "") < text.lastIndexOf(b.phrase || "") ? 1 : -1
   );
@@ -231,19 +282,14 @@ async function fixSpecificFlags(fullText, flags) {
     const raw = (f.phrase || "").trim();
     if (!raw) continue;
 
-    // get contextual replacement
     const base = (f.suggestedFix && f.suggestedFix.trim()) || " ";
     const replacement = await contextualReplacement(text, raw, base);
 
-    // word-boundary if simple word; escape otherwise
     const isWord = /^[A-Za-z][A-Za-z'-]*$/.test(raw);
-    const source = isWord
-      ? `\\b${escapeRegex(raw)}\\b`
-      : escapeRegex(raw);
+    const source = isWord ? `\\b${escapeRegex(raw)}\\b` : escapeRegex(raw);
     const rx = new RegExp(source, "g");
 
     text = text.replace(rx, (m) => {
-      // preserve capitalization style
       if (m === m.toUpperCase()) return replacement.toUpperCase();
       if (m[0] === m[0].toUpperCase()) return replacement[0].toUpperCase() + replacement.slice(1);
       return replacement;
@@ -257,7 +303,7 @@ async function contextualReplacement(fullText, flaggedPhrase, baseFix) {
     const sentences = fullText.split(/(?<=[.!?])\s+/).filter(Boolean);
     const sentence = sentences.find(s => s.toLowerCase().includes(flaggedPhrase.toLowerCase())) || flaggedPhrase;
 
-    const prompt = `Replace the flagged phrase with a natural alternative that fits the sentence.
+    const prompt = `Replace the flagged phrase with a natural alternative that fits this sentence.
 
 Sentence: "${sentence}"
 Flagged phrase: "${flaggedPhrase}"
@@ -266,7 +312,7 @@ Base suggestion: "${baseFix}"
 Return ONLY the replacement phrase (no quotes).`;
     const out = await callOpenAI(
       [
-        { role: "system", content: "You return short, natural replacement phrases only." },
+        { role: "system", content: "Return short replacement phrases only." },
         { role: "user", content: prompt }
       ],
       0.3
@@ -278,7 +324,7 @@ Return ONLY the replacement phrase (no quotes).`;
   }
 }
 
-// ============ Reasoning/UX helpers ============
+// ================== Helpers ==================
 function getGPTZeroReasoning(score, n) {
   if (score >= 80) return `HIGH AI DETECTION (${score}%) — likely flagged. ${n} strong AI patterns detected.`;
   if (score >= 60) return `MODERATE-HIGH (${score}%) — significant AI influence. ${n} patterns found.`;
@@ -294,11 +340,9 @@ function getRealisticTip(score) {
   return "EXCELLENT: Very low detection risk.";
 }
 
-// ============ Shared utilities ============
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 function createTextHash(text) {
-  let h = 0;
-  for (let i = 0; i < text.length; i++) { h = ((h << 5) - h) + text.charCodeAt(i); h |= 0; }
+  let h = 0; for (let i = 0; i < text.length; i++) { h = ((h << 5) - h) + text.charCodeAt(i); h |= 0; }
   return h.toString();
 }
 
