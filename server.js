@@ -10,6 +10,10 @@ app.use(cors());
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 
+// Optional tiny calibration (leave defaults if you don’t want nudging)
+const CAL_SLOPE = Number(process.env.SUS_CAL_SLOPE || 1.0);  // 1.0 = no change
+const CAL_OFFSET = Number(process.env.SUS_CAL_OFFSET || 0);   // 0   = no change
+
 const scoreCache = new Map();
 
 app.post("/analyze", async (req, res) => {
@@ -37,12 +41,17 @@ app.post("/analyze", async (req, res) => {
       const fixedText = await fixSpecificFlags(essay, flags);
       const originalScore = await getGPTZeroCompatibleScore(essay);
       const newScore = await getGPTZeroCompatibleScore(fixedText);
+
+      const originalSus = toSus(originalScore);
+      const newSus = toSus(newScore);
       
       return res.status(200).json({ 
         fixedText,
         text: fixedText,
-        originalScore: originalScore,
-        newScore: newScore
+        originalScore,
+        newScore,
+        originalSus, // { percent, band, label }
+        newSus       // { percent, band, label }
       });
     }
 
@@ -59,88 +68,96 @@ app.post("/analyze", async (req, res) => {
   }
 });
 
-// GPTZero-Compatible Scoring (MUCH more accurate)
+/* ===========================
+   PERFECT GPTZero-Compatible Scorer (restored)
+   =========================== */
 async function getGPTZeroCompatibleScore(text) {
   const textHash = createTextHash(text);
-  
   if (scoreCache.has(textHash)) {
     return scoreCache.get(textHash);
   }
 
-  const prompt = `You are GPTZero's detection algorithm. Analyze this text for AI generation patterns and provide a detection score 0-100%.
+  const prompt = `You are an expert AI detection system like GPTZero and Turnitin. Analyze this text and rate its AI detection risk from 0-100%.
 
-CRITICAL DETECTION FACTORS (like GPTZero):
-1. **Perplexity & Burstiness**: Measure sentence structure variation
-2. **Pattern Repetition**: Repeated syntactic structures
-3. **Formality Level**: Overly formal academic/corporate language
-4. **Vocabulary Diversity**: Limited or predictable word choices
-5. **Semantic Predictability**: How predictable the content flow is
-6. **Stylistic Consistency**: Unnatural consistency in tone/style
+SCORING GUIDELINES:
+- 0-25%: Natural human writing with varied sentence structure, personality, and authentic voice
+- 26-45%: Mostly human but some formulaic patterns
+- 46-65%: Mixed - could be human academic writing but has AI-like patterns
+- 66-85%: Strong AI patterns - formal, repetitive, generic phrasing, lacks personality
+- 86-100%: Obviously AI-generated with robotic phrasing and structure
 
-TEXT ANALYSIS:
-- High AI scores (70-100%): Uniform sentence lengths, corporate jargon, perfect grammar, predictable transitions
-- Medium AI scores (40-69%): Mixed patterns, some human elements but detectable AI influence
-- Low AI scores (0-39%): Varied sentence lengths, natural imperfections, personal voice, unpredictable flow
+Consider these AI detection triggers:
+- Overuse of formal transitions (furthermore, moreover, in conclusion)
+- Corporate buzzwords (utilize, leverage, facilitate, optimize)
+- Generic academic phrases (it is important to note, this underscores the significance)
+- Repetitive sentence structures
+- Lack of natural variation in sentence length
+- Overly perfect grammar without human quirks
 
-Text to analyze:
-"""
-${text}
-"""
+Text: "${String(text).replace(/"/g, '\\"')}" 
 
-Respond with ONLY a number between 0-100 representing the AI detection probability.`;
+Respond with just a number 0-100.`;
 
   try {
-    const result = await callOpenAI([
-      { role: "system", content: "You are GPTZero's AI detection system. Analyze text and return ONLY a number 0-100 for AI probability." },
-      { role: "user", content: prompt }
-    ], 0.1);
+    const result = await callOpenAI(
+      [
+        { role: "system", content: "You are a precise AI detection expert. Always respond with just a number 0-100." },
+        { role: "user", content: prompt }
+      ],
+      0.1 // low temperature for stability
+    );
 
-    let score = parseInt(result.trim());
-    
-    // Validate score
-    if (isNaN(score) || score < 0 || score > 100) {
-      score = calculateFallbackScore(text);
+    const raw = (result || "").trim();
+    const score = parseInt(raw, 10);
+
+    if (Number.isFinite(score) && score >= 0 && score <= 100) {
+      scoreCache.set(textHash, score);
+      return score;
     }
-    
-    console.log("GPTZero-compatible score:", score);
-    scoreCache.set(textHash, score);
-    return score;
-    
+
+    throw new Error("Non-numeric score");
   } catch (err) {
-    console.log("GPTZero scoring failed, using fallback:", err.message);
-    return calculateFallbackScore(text);
+    throw new Error("Analysis unavailable");
   }
 }
 
-// Accurate fallback scoring that matches real detectors
+/* ===== SUS mapping to match your site's bands/labels =====
+   - We keep your frontend thresholds:
+       70–100 => "SUS AF" (high)
+       30–69  => "KINDA SUS" (medium)
+        0–29  => "SUS FREE" (low)
+   - percent is also optionally calibrated via CAL_SLOPE/OFFSET
+*/
+function toSus(rawScore0to100){
+  // optional nudge, then clamp
+  const pct = Math.max(0, Math.min(100, Math.round(CAL_SLOPE * rawScore0to100 + CAL_OFFSET)));
+  if (pct >= 70) return { percent: pct, band: "high",   label: "SUS AF" };
+  if (pct >= 30) return { percent: pct, band: "medium", label: "KINDA SUS" };
+  return                 { percent: pct, band: "low",    label: "SUS FREE" };
+}
+
+/* ===== Fallback (kept for completeness; not used by the restored scorer) ===== */
 function calculateFallbackScore(text) {
   let score = 0;
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
   const words = text.split(/\s+/).filter(w => w.length > 0);
-  
   if (sentences.length === 0) return 50;
-  
-  // 1. Sentence Length Variation (Burstiness)
+
   const sentenceLengths = sentences.map(s => s.split(/\s+/).length);
   const lengthStdDev = calculateStdDev(sentenceLengths);
-  if (lengthStdDev < 3) score += 25; // Low variation = AI
-  if (lengthStdDev > 8) score -= 15; // High variation = human
-  
-  // 2. Corporate/Formal Language Detection
+  if (lengthStdDev < 3) score += 25;
+  if (lengthStdDev > 8) score -= 15;
+
   const formalWords = [
     'utilize', 'leverage', 'facilitate', 'implement', 'optimize',
     'furthermore', 'moreover', 'therefore', 'thus', 'hence',
     'paramount', 'myriad', 'plethora', 'underscores', 'highlight'
   ];
-  
   formalWords.forEach(word => {
     const regex = new RegExp(`\\b${word}\\b`, 'gi');
-    if (text.match(regex)) {
-      score += 20;
-    }
+    if (text.match(regex)) score += 20;
   });
-  
-  // 3. Transition Word Overuse
+
   const transitions = ['however', 'therefore', 'consequently', 'additionally', 'furthermore'];
   let transitionCount = 0;
   transitions.forEach(transition => {
@@ -148,24 +165,17 @@ function calculateFallbackScore(text) {
     const matches = text.match(regex);
     if (matches) transitionCount += matches.length;
   });
-  
-  if (transitionCount > sentences.length * 0.3) {
-    score += 20; // Overuse of transitions = AI
-  }
-  
-  // 4. Sentence Structure Repetition
+  if (transitionCount > sentences.length * 0.3) score += 20;
+
   const startingWords = sentences.map(s => s.trim().split(/\s+/)[0]?.toLowerCase() || '');
   const uniqueStarters = new Set(startingWords).size;
-  if (uniqueStarters / sentences.length < 0.6) {
-    score += 15; // Repetitive sentence starters = AI
-  }
-  
-  // 5. Vocabulary Diversity
+  if (uniqueStarters / sentences.length < 0.6) score += 15;
+
   const uniqueWords = new Set(words.map(w => w.toLowerCase())).size;
   const diversityRatio = uniqueWords / words.length;
   if (diversityRatio < 0.5) score += 15;
   if (diversityRatio > 0.7) score -= 10;
-  
+
   return Math.max(0, Math.min(100, score));
 }
 
@@ -178,9 +188,11 @@ function calculateStdDev(numbers) {
 async function analyzeWithGPTZeroLogic(text) {
   const flags = detectRealAIPatterns(text);
   const score = await getGPTZeroCompatibleScore(text);
+  const sus = toSus(score);
   
   return {
-    score: Math.round(score),
+    score: Math.round(score),     // your numeric AI % (unchanged)
+    sus,                          // { percent, band, label } aligned to your site
     reasoning: getGPTZeroReasoning(score, flags.length),
     flags: flags.slice(0, 8),
     proTip: getRealisticTip(score)
@@ -190,7 +202,6 @@ async function analyzeWithGPTZeroLogic(text) {
 // Real AI pattern detection that matches actual detectors
 function detectRealAIPatterns(text) {
   const patterns = [
-    // High-confidence AI patterns (like GPTZero detects)
     {
       phrases: ["it is important to note", "it should be noted that", "it is worth noting"],
       weight: 25,
@@ -209,8 +220,6 @@ function detectRealAIPatterns(text) {
       explanation: "AI often uses explicit meta-commentary about the writing itself",
       suggestedFix: "This explores"
     },
-    
-    // Medium-confidence patterns
     {
       phrases: ["utilize", "leverage", "facilitate"],
       weight: 18,
@@ -229,10 +238,8 @@ function detectRealAIPatterns(text) {
       explanation: "Exaggerated formal language typical of AI",
       suggestedFix: "is very important"
     },
-    
-    // Sentence structure patterns
     {
-      phrases: [". This", ". It", ". The"], // Pattern: short sentences starting similarly
+      phrases: [". This", ". It", ". The"],
       weight: 15,
       explanation: "Repetitive sentence structure patterns",
       suggestedFix: "Vary sentence beginnings"
@@ -247,7 +254,6 @@ function detectRealAIPatterns(text) {
       if (textLower.includes(phrase.toLowerCase())) {
         const regex = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
         const matches = text.match(regex);
-        
         if (matches) {
           flags.push({
             phrase: phrase,
@@ -361,5 +367,5 @@ async function callOpenAI(messages, temperature = 0.3) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Fixed backend running on port ${PORT} - GPTZero compatible scoring enabled`);
+  console.log(`Fixed backend running on port ${PORT} - GPTZero compatible scoring + SUS mapping enabled`);
 });
