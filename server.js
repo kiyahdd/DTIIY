@@ -1,4 +1,4 @@
-// server.js - FREE VERSION (Pattern-Based Detection Only)
+// server.js - UPDATED FOR FRONTEND INTEGRATION
 import express from "express";
 import cors from "cors";
 
@@ -59,10 +59,10 @@ function detectFlags(text) {
     { rx: /\bcomprehensive\b/gi, weight: 17, exp: "Overused AI adjective", fix: "complete", severity: "medium" },
     
     // LOWER FLAGS (still important for total score)
-    { rx: /\bdemonstrate(?:s|d)?\b/gi, weight: 14, exp: "Academic verb choice", fix: "show", severity: "low" },
-    { rx: /\bestablish(?:ed|ing|es)?\b/gi, weight: 13, exp: "Formal language pattern", fix: "set up", severity: "low" },
-    { rx: /\bsignificant(?:ly)?\b/gi, weight: 12, exp: "Overused academic word", fix: "big", severity: "low" },
-    { rx: /\bsubstantial(?:ly)?\b/gi, weight: 11, exp: "Formal descriptor", fix: "large", severity: "low" }
+    { rx: /\bdemonstrate(?:s|d)?\b/gi, weight: 14, exp: "Academic verb choice", fix: "show", severity: "medium" },
+    { rx: /\bestablish(?:ed|ing|es)?\b/gi, weight: 13, exp: "Formal language pattern", fix: "set up", severity: "medium" },
+    { rx: /\bsignificant(?:ly)?\b/gi, weight: 12, exp: "Overused academic word", fix: "big", severity: "medium" },
+    { rx: /\bsubstantial(?:ly)?\b/gi, weight: 11, exp: "Formal descriptor", fix: "large", severity: "medium" }
   ];
 
   const flags = [];
@@ -128,40 +128,10 @@ function calculateScore(text, flags) {
   return Math.max(5, Math.min(95, Math.round(finalScore)));
 }
 
-// ================== SIMPLE FLAG FIXING (FREE VERSION) ==================
-function quickFixFlags(text, flags) {
-  if (!flags || flags.length === 0) return text;
-  
-  let fixedText = text;
-  
-  // Sort by position (descending) to avoid shifting indices
-  const sortedFlags = [...flags].sort((a, b) => 
-    text.lastIndexOf(b.phrase || "") - text.lastIndexOf(a.phrase || "")
-  );
-
-  for (const flag of sortedFlags) {
-    const phrase = String(flag.phrase || "").trim();
-    if (!phrase) continue;
-
-    // Simple regex replacement with case preservation
-    const regex = new RegExp(escapeRegex(phrase), 'gi');
-    fixedText = fixedText.replace(regex, (match) => {
-      const fix = flag.suggestedFix || "fixed";
-      if (match === match.toUpperCase()) return fix.toUpperCase();
-      if (match[0] === match[0].toUpperCase()) {
-        return fix.charAt(0).toUpperCase() + fix.slice(1);
-      }
-      return fix;
-    });
-  }
-  
-  return fixedText;
-}
-
 // ================== MAIN API ENDPOINT ==================
 app.post("/analyze", async (req, res) => {
   try {
-    const { essay, action = "analyze", flags = [], userId = 'anonymous' } = req.body || {};
+    const { essay, action = "analyze", userId = 'anonymous' } = req.body || {};
 
     if (!essay || essay.trim().length < 50 || essay.length > 500) {
       return res.status(200).json({ 
@@ -176,18 +146,17 @@ app.post("/analyze", async (req, res) => {
     if (!canScan(userId)) {
       return res.status(200).json({
         error: true,
-        message: "Daily limit reached (3 scans). Upgrade to Pro for unlimited scans!",
+        message: "Daily limit reached (3 scans). Upgrade to Pro for 10 daily scans!",
         upgradeRequired: true
       });
     }
 
-    // Handle fix request (only show upgrade prompt)
+    // Handle fix request (only show upgrade prompt for free users)
     if (action === "fix_flags") {
       return res.status(200).json({
         error: true,
         message: "Fixing requires Pro subscription. Upgrade for instant fixes!",
-        upgradeRequired: true,
-        previewFix: "Pro users can fix all flags instantly..."
+        upgradeRequired: true
       });
     }
 
@@ -201,14 +170,9 @@ app.post("/analyze", async (req, res) => {
     
     return res.status(200).json({
       score,
-      flags: detectedFlags.slice(0, 15), // Show more flags to create urgency
-      reasoning: getScoreReasoning(score, detectedFlags.length),
-      proTip: getProTip(score),
-      method: 'pattern',
+      flags: detectedFlags.slice(0, 15), // Show up to 15 flags
       scansLeft,
-      upgradeRequired: scansLeft === 0,
-      flagsShown: Math.min(3, detectedFlags.length), // Free users see only 3
-      flagsHidden: Math.max(0, detectedFlags.length - 3)
+      upgradeRequired: scansLeft === 0
     });
 
   } catch (err) {
@@ -221,21 +185,6 @@ app.post("/analyze", async (req, res) => {
 });
 
 // ================== HELPER FUNCTIONS ==================
-function getScoreReasoning(score, flagCount) {
-  if (score >= 80) return `EXTREMELY HIGH RISK (${score}%) — Will definitely be flagged! ${flagCount} AI patterns detected.`;
-  if (score >= 60) return `HIGH RISK (${score}%) — Very likely to trigger detectors. ${flagCount} problematic patterns found.`;
-  if (score >= 40) return `MODERATE RISK (${score}%) — May trigger some detectors. ${flagCount} suspicious patterns.`;
-  if (score >= 20) return `LOW RISK (${score}%) — Mostly safe. ${flagCount} minor issues detected.`;
-  return `MINIMAL RISK (${score}%) — Should pass detectors. ${flagCount === 0 ? 'No' : 'Few'} issues found.`;
-}
-
-function getProTip(score) {
-  if (score >= 75) return "🚨 URGENT: This will be flagged! Pro shows exactly how to fix each issue.";
-  if (score >= 55) return "⚠️ RISKY: Multiple AI patterns detected. Pro reveals all flags + instant fixes.";
-  if (score >= 35) return "🔧 CAUTION: Some patterns present. Pro shows hidden issues + improvements.";
-  return "✅ Looking good! Pro gives perfect confidence with unlimited scans.";
-}
-
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
