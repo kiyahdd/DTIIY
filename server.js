@@ -19,8 +19,8 @@ function getUserState(userId = "anon") {
 
 function canScan(userId) {
   const user = getUserState(userId);
-  if (user.pro) return true;
-  return user.scansUsed < 3 || !user.emergencyUsed;
+  if (user.pro) return true; // Pro always allowed
+  return user.scansUsed < 3; // Free: 3 scans/day
 }
 
 function incrementScan(userId) {
@@ -130,17 +130,21 @@ app.post("/analyze", (req, res) => {
     const score = calculateScore(essay, flags);
     incrementScan(userId);
 
+    // SUS labels
     let susLabel = "SUS-Free (Low Risk)";
     if (score >= 85) susLabel = "SUS AF (High Risk)";
     else if (score >= 60) susLabel = "Kinda SUS (Medium Risk)";
 
+    // Free users only see blurred results (frontend handles blur)
+    const isProOrEmergency = user.pro || mode === "emergency";
+
     return res.status(200).json({
       score,
       susLabel,
-      flags: user.pro ? flags : [],
+      flags: isProOrEmergency ? flags : [], // Free sees empty array (we’ll blur client-side)
       summary: flags.length === 0 ? "Looks 🔥, Bestie. Go ahead and turn it in." : undefined,
       scansUsed: user.scansUsed,
-      upgradeRequired: !user.pro && user.scansUsed >= 3
+      upgradeRequired: !isProOrEmergency && user.scansUsed >= 99
     });
   } catch (e) {
     return res.status(500).json({ error: true, message: "Server error: " + e.message });
