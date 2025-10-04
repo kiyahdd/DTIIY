@@ -95,7 +95,7 @@ function calculateScore(text, flags) {
     if (avg > 25) baseScore += 15;
   }
 
-  const contractions = (text.match(/\b\w+['’](?:t|re|ll|ve|d|s|m)\b/gi) || []).length;
+  const contractions = (text.match(/\b\w+[''](?:t|re|ll|ve|d|s|m)\b/gi) || []).length;
   if (contractions / Math.max(words, 1) < 0.02) baseScore += 18;
 
   const passive = (text.match(/\b(?:was|were|been|being)\s+\w+ed\b/gi) || []).length;
@@ -141,7 +141,7 @@ app.post("/analyze", (req, res) => {
     return res.status(200).json({
       score,
       susLabel,
-      flags: isProOrEmergency ? flags : [], // Free sees empty array (we’ll blur client-side)
+      flags: isProOrEmergency ? flags : [], // Free sees empty array (we'll blur client-side)
       summary: flags.length === 0 ? "Looks 🔥, Bestie. Go ahead and turn it in." : undefined,
       scansUsed: user.scansUsed,
       upgradeRequired: !isProOrEmergency && user.scansUsed >= 99
