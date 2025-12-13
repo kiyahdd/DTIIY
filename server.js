@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 8080;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public')); // Serve static files from 'public' directory
 
 // Anthropic API configuration
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'sk-ant-api3-Xii...rQAA'; // Replace with your full key
@@ -284,15 +285,20 @@ Example: If you find "It is important to note that" → alternatives could be ["
 // Initialize Haiku Detector
 const haikuDetector = new HaikuAIDetector(ANTHROPIC_API_KEY);
 
-// Root endpoint - API info
+// Serve index.html at root (fallback if static file not found)
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'False Flag Fixer API',
-    version: '1.0.0',
-    endpoints: {
-      health: 'GET /health',
-      analyze: 'POST /analyze'
+  res.sendFile('index.html', { root: './public' }, (err) => {
+    if (err) {
+      // If index.html doesn't exist, return API info
+      res.json({ 
+        status: 'ok', 
+        message: 'False Flag Fixer API',
+        version: '1.0.0',
+        endpoints: {
+          health: 'GET /health',
+          analyze: 'POST /analyze'
+        }
+      });
     }
   });
 });
