@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+
+# Lock files
+package-lock.json
+
+# Logs
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+
+# Build / cache
+dist/
+build/
+.cache/
