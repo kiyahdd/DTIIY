@@ -1701,6 +1701,9 @@ Do not include explanations or other text.`;
     }
   }
 });
+app.get("/", (req, res) => {
+  res.send("DTIIY / False Flag Fixer API is live");
+});
 
 app.listen(PORT, () => {
   console.log(`
