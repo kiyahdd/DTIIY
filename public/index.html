@@ -3918,6 +3918,17 @@ body.modal-open .input-section {
               ✅ Copy & Turn It In
             </button>
           </div>
+          <!-- Pro Low Sus Step 1: Dashboard buttons under Copy CTA -->
+          <div id="proLowSusDashboardButtons" style="display: none; margin: 16px 0 0 0;">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <button onclick="hideQuickFixFlow()" style="background: white; border: 2px dashed #0b0646; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #0b0646; cursor: pointer; width: 100%;">
+                🏠 Back To Main Dashboard
+              </button>
+              <button onclick="backToProDashboard()" style="background: white; border: 2px solid #00a8e8; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #00a8e8; cursor: pointer; width: 100%;">
+                💎 Back To Pro Dashboard
+              </button>
+            </div>
+          </div>
           <!-- Pro Low Sus Step 1: Trusted section (replaces green Copy CTA for Pro users) -->
           <div id="proLowSusTrustedInPlaceOfCopy" style="display: none; text-align: center; margin: 0; padding: 24px 0 24px 0;">
             <p style="color: #374151; font-size: 14px; font-weight: 600; margin: 0 0 0 0; line-height: 1.4;">
@@ -3935,24 +3946,6 @@ body.modal-open .input-section {
             </div>
           </div>
 
-          <!-- QF Low Sus Step 1 ONLY: FYI Bestie + Can't decide (from Free Low Sus) -->
-          <div id="qfLowSusFyiBestieBlock" style="display: none; margin: 24px 0 0 0; text-align: center; line-height: 1.6;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 20px; margin-bottom: 8px; font-weight: bold;">
-              <img src="https://i.postimg.cc/vT6KtkH0/LS-pointing-trans-1.png" alt="Lil Sus" class="lil-sus-pulsate" style="height: 56px; width: auto; object-fit: contain;" />
-              <span style="color: #0b0646;">⚠️ FYI</span>
-            </div>
-            <p style="font-size: 14px; color: #6b7280; margin: 0 0 48px 0; line-height: 1.6; font-weight: 500;">
-              AI detectors can be moody af — what's 'low sus' today might trigger them tomorrow. Your Pro sub already covers deeper scans with Claude Haiku, so you're good. Just sayin'.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-              <button onclick="hideQuickFixFlow()" style="background: white; border: 2px dashed #0b0646; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #0b0646; cursor: pointer; width: 100%;">
-                🏠 Back To Main Dashboard
-              </button>
-              <button onclick="backToProDashboard()" style="background: white; border: 2px solid #00a8e8; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #00a8e8; cursor: pointer; width: 100%;">
-                💎 Back To Pro Dashboard
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- LIL SUS CLEAN ESSAY MESSAGE (QuickFix Step 2 Clean No Sus only) - After Copy Text CTA, above lockbox -->
@@ -4053,6 +4046,16 @@ body.modal-open .input-section {
             <!-- Premium feature = Blue -->
           </div>
 
+          <!-- QF Low Sus Step 1 ONLY: FYI Bestie (moved to after quickfixButtonGroup) -->
+          <div id="qfLowSusFyiBestieBlock" style="display: none; margin: 24px 0 0 0; text-align: center; line-height: 1.6;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 20px; margin-bottom: 8px; font-weight: bold;">
+              <img src="https://i.postimg.cc/vT6KtkH0/LS-pointing-trans-1.png" alt="Lil Sus" class="lil-sus-pulsate" style="height: 56px; width: auto; object-fit: contain;" />
+              <span style="color: #0b0646;">⚠️ FYI</span>
+            </div>
+            <p style="font-size: 14px; color: #6b7280; margin: 0 0 24px 0; line-height: 1.6; font-weight: 500;">
+              AI detectors can be moody af — what's 'low sus' today might trigger them tomorrow. Your Pro sub already covers deeper scans with Claude Haiku, so you're good. Just sayin'.
+            </p>
+          </div>
           <!-- GO AHEAD! TURN IT IN! moved to white section -->
           <div id="goAheadTurnItIn" style="display: none; text-align: center; margin: 24px 0;">
             <div style="background: #10b981; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-size: 18px; font-weight: 700; width: 100%; pointer-events: none;">
@@ -4101,8 +4104,8 @@ body.modal-open .input-section {
                   High quality = high risk of AI detection.
                 </p>
                 <div style="display: inline-block; margin-bottom: 16px;">
-                  <p style="color: #60a5fa; font-weight: 700; font-size: 1.25rem; margin: 0;">
-                    That's why Pro is the move.
+                  <p style="color: #7dd3fc; font-weight: 700; font-size: 1.25rem; margin: 0;">
+                    That's why Pro is the move
                   </p>
                   <div style="height: 4px; background: linear-gradient(to right, transparent, #60a5fa, transparent); margin-top: 12px;"></div>
                 </div>
@@ -10646,6 +10649,8 @@ function displayQuickFixAnalysis(text, score, flags) {
     if (qfLowSusBackBlock) { qfLowSusBackBlock.style.display = 'block'; }
     const qfLowSusFyiBestieBlock = document.getElementById('qfLowSusFyiBestieBlock');
     if (qfLowSusFyiBestieBlock) { qfLowSusFyiBestieBlock.style.display = 'block'; }
+    const proLowSusDashboardButtons = document.getElementById('proLowSusDashboardButtons');
+    if (proLowSusDashboardButtons) { proLowSusDashboardButtons.style.display = 'block'; }
     setTimeout(function() {
       if (typeof showCanvasConfetti === 'function') {
         const lowSusCard = document.getElementById('quickfixYoureGoodCard');
