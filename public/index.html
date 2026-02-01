@@ -4082,6 +4082,12 @@ body.modal-open .input-section {
             <p style="font-size: 13px; margin: 0; color: #6b7280;">Only $1.99 for peace of mind 😊</p>
           </div>
 
+          <!-- Pro Low Sus Step 1 ONLY: Trusted testimonial above Fun Fact -->
+          <div id="proTrustedTestimonialLowSus" style="display: none; width: 100%; max-width: 672px; margin: 24px auto 0 auto; text-align: center; box-sizing: border-box;">
+            <p style="color: #374151; font-size: 16px; margin: 0 0 8px 0; font-weight: 500;">Trusted by 10,000+ students who fixed their false flags and turned their essays in with confidence.</p>
+            <p style="font-size: 24px; margin: 0; letter-spacing: 2px;">⭐⭐⭐⭐⭐</p>
+          </div>
+
           <!-- Pro Low Sus Step 1 ONLY: Fun Fact graphic (replaces QF upsell box for Pro users) -->
           <div id="proFunFactGraphicProLowSus" style="display: none; width: 100%; max-width: 672px; margin: 24px auto; box-sizing: border-box;">
             <div style="background: linear-gradient(to bottom right, #0f172a, #1e293b, #0f172a); border-radius: 8px; padding: 48px 24px; text-align: center; position: relative; overflow: hidden; border: 1px solid #334155;">
@@ -10669,6 +10675,10 @@ function displayQuickFixAnalysis(text, score, flags) {
         proFunFactGraphicProLowSus.style.display = 'block';
         proFunFactGraphicProLowSus.style.setProperty('display', 'block', 'important');
       }
+      var proTrustedTestimonialLowSus = document.getElementById('proTrustedTestimonialLowSus');
+      if (proTrustedTestimonialLowSus) {
+        proTrustedTestimonialLowSus.style.display = 'block';
+      }
     } else {
       // QF Low Sus Step 1: SHOW QF upsell, HIDE Pro Fun Fact graphic
       if (oldUpsellSection) {
@@ -10681,6 +10691,9 @@ function displayQuickFixAnalysis(text, score, flags) {
       }
       if (proFunFactGraphicProLowSus) {
         proFunFactGraphicProLowSus.style.display = 'none';
+      }
+      if (proTrustedTestimonialLowSus) {
+        proTrustedTestimonialLowSus.style.display = 'none';
       }
     }
     // Show upsell box/banner/stripe for free users on clean results; hide for Pro
