@@ -4028,6 +4028,12 @@ body.modal-open .input-section {
             </div>
           </div>
 
+          <!-- Pro Step 2 ONLY: Back To Pro Dashboard above CTAs -->
+          <div id="proStep2BackToDashboard" style="display: none; text-align: center; margin: 0 0 16px 0;">
+            <button onclick="backToProDashboard()" style="background: white; border: 2px solid #00a8e8; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #00a8e8; cursor: pointer; min-width: 280px;">
+              💎 Back To Pro Dashboard
+            </button>
+          </div>
           <!-- Button group with proper color hierarchy -->
           <div id="quickfixButtonGroup" style="display: flex; gap: 16px; justify-content: center; align-items: center; margin: 0; padding: 48px 0 42px 0; flex-wrap: wrap; line-height: 1;">
             <!-- Animated pointing hand emoji -->
@@ -9440,6 +9446,8 @@ function showQuickFixStep(stepNumber) {
       const step2TrustedSection = document.getElementById('step2TrustedSection');
       if (step2BackToDashboard) { step2BackToDashboard.style.display = 'none'; step2BackToDashboard.style.setProperty('display', 'none', 'important'); }
       if (step2BackToProDashboard) { step2BackToProDashboard.style.display = 'block'; step2BackToProDashboard.style.setProperty('display', 'block', 'important'); }
+      const proStep2BackToDashboard = document.getElementById('proStep2BackToDashboard');
+      if (proStep2BackToDashboard) { proStep2BackToDashboard.style.display = 'block'; proStep2BackToDashboard.style.setProperty('display', 'block', 'important'); }
       // Pro Low Sus Step 1: NEVER show Trusted at bottom (it's in place of Copy CTA). Only show for Pro Hella/Kinda Sus.
       const score = appState.quickfixOriginalScore ?? appState.proOriginalScore ?? 0;
       if (step2TrustedSection) {
