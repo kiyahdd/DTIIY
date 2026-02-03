@@ -62049,16 +62049,30 @@ class ProChatSupport {
   }
   
   checkProStatus() {
+    // Production verification - stricter on custom domains
+    const hostname = window.location.hostname;
+    const isDevEnvironment = hostname.includes('replit.dev') || 
+                            hostname.includes('replit.app') || 
+                            hostname.includes('localhost') ||
+                            hostname === '127.0.0.1';
+    
     // Method 1: Check localStorage
     const isPro = localStorage.getItem('fff_pro_user') === 'true';
     
-    // Method 2: Check URL parameter (for testing)
+    // Method 2: Check URL parameter (for testing - dev only)
     const urlParams = new URLSearchParams(window.location.search);
-    const testPro = urlParams.get('test_pro') === 'true';
+    const testPro = isDevEnvironment && urlParams.get('test_pro') === 'true';
     
     // Method 3: Check if on Pro dashboard (quickfixStep6 visible)
     const proStep = document.getElementById('quickfixStep6');
     const isOnProDashboard = proStep && proStep.style.display !== 'none' && proStep.classList.contains('active');
+    
+    // For custom domains (production), require real Pro status (localStorage set by Stripe callback)
+    if (!isDevEnvironment && !isPro && !isOnProDashboard) {
+      console.warn('Production: Pro verification requires Stripe integration');
+      this.isProUser = false;
+      return false;
+    }
     
     this.isProUser = isPro || testPro || isOnProDashboard;
     return this.isProUser;
@@ -62079,8 +62093,28 @@ class ProChatSupport {
     if (!messagesDiv) return;
     
     messagesDiv.innerHTML = '';
+    
+    // Add beta warning for dev/test environments
+    const hostname = window.location.hostname;
+    const isDevEnvironment = hostname.includes('replit.dev') || 
+                            hostname.includes('replit.app') || 
+                            hostname.includes('localhost');
+    if (isDevEnvironment) {
+      this.addBetaWarning();
+    }
+    
     this.addMessage('assistant', "👋 Hi! I'm your Pro Priority Support AI. Ask me anything about False Flag Fixer!");
     this.addMessage('assistant', "💡 I can help with:\n• How to use QuickFix & Pro features\n• Understanding AI detection\n• Writing tips to sound human\n• Account & billing questions");
+  }
+  
+  addBetaWarning() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    const warning = document.createElement('div');
+    warning.style.cssText = 'background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 10px 0; text-align: center; color: #92400e;';
+    warning.innerHTML = '<strong>🚧 Beta Feature</strong><br>Pro Chat is in testing. Stripe integration coming soon!';
+    messagesDiv.appendChild(warning);
   }
   
   toggleChat() {

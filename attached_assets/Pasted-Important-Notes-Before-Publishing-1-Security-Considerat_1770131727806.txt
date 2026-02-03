@@ -1,0 +1,48 @@
+Important Notes Before Publishing:
+1. Security Considerations for Production:
+javascript
+// TEMPORARY FIX for production - Add server-side verification placeholder
+async function verifyProForProduction() {
+    // In production, we'll need actual Stripe verification
+    const isLocalhost = window.location.hostname.includes('replit.dev') || 
+                       window.location.hostname.includes('localhost');
+    
+    if (isLocalhost || window.location.hostname.includes('replit.app')) {
+        // Allow testing on Replit domains
+        return detectProUser(); // Use your existing detection
+    } else {
+        // For custom domain - require real verification
+        console.warn('Production: Pro verification will require Stripe integration');
+        return false; // Default to false until Stripe is ready
+    }
+}
+2. Environment Variables to Set in Replit:
+Make sure these are in your Secrets:
+
+text
+ANTHROPIC_API_KEY=your_key_here
+BACKEND_URL=http://localhost:5000 (or your actual backend URL)
+3. Add a Beta Warning to Chat:
+javascript
+// Add to chat initialization
+if (window.location.hostname.includes('replit.app')) {
+    addBetaWarning();
+}
+
+function addBetaWarning() {
+    const warning = document.createElement('div');
+    warning.innerHTML = `
+        <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px; margin: 10px; text-align: center;">
+            <strong>🚧 Beta Feature</strong><br>
+            Pro Chat is in testing. Stripe integration coming soon!
+        </div>
+    `;
+    document.getElementById('chatMessages').prepend(warning);
+}
+4. Publishing Checklist:
+✅ Chat works with current Pro detection (localStorage/URL params)
+✅ Essay prevention active (150-word limit, pattern detection)
+✅ Rate limiting implemented (50 requests/hour)
+✅ Claude API integration working
+✅ Frontend-only deployment ready
+⚠️ Stripe integration needed for production billing (but you said this is coming)
