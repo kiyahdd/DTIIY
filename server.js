@@ -1705,7 +1705,7 @@ app.get("/", (req, res) => {
   res.send("DTIIY / False Flag Fixer API is live");
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║  🚀 FALSE FLAG FIXER API - ULTRA AGGRESSIVE v4.0 - READY!     ║
