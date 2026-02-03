@@ -38643,31 +38643,23 @@ function updateScoreLabelColor(score, labelElementId) {
 // Helper: progress bar fill gradient - only colors passed (green 0-30%, yellow 30-70%, red 70-100%)
 
 function getProgressFillGradient(score) {
-
   const s = Math.max(0, Math.min(100, score));
-
+  
   if (s < 30) {
-
-    return '#10b981'; // Clean - solid green
-
+    // Low Sus: Solid green
+    return '#10b981';
   }
-
+  
   if (s < 70) {
-
-    // Kinda Sus: Show solid yellow (#FFF000 - correct QuickFix yellow)
-
-    return '#FFF000'; // Solid yellow for Kinda Sus
-
+    // Mid Sus: Green -> Yellow gradient (green portion + yellow portion)
+    const pctGreen = (30 / s) * 100;
+    return `linear-gradient(to right, #10b981 0%, #10b981 ${pctGreen}%, #FFF000 ${pctGreen}%, #FFF000 100%)`;
   }
-
-  // Hella Sus: Green -> Yellow -> Red gradient
-
+  
+  // Major Sus (70+): Green -> Yellow -> Red gradient
   const pctGreen = (30 / s) * 100;
-
   const pctYellow = (70 / s) * 100;
-
   return `linear-gradient(to right, #10b981 0%, #10b981 ${pctGreen}%, #FFF000 ${pctGreen}%, #FFF000 ${pctYellow}%, #ef4444 ${pctYellow}%, #ef4444 100%)`;
-
 }
 
 
