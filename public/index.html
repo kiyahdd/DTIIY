@@ -11397,7 +11397,7 @@ body.modal-open .input-section {
 
             const text = essayInput.value ? essayInput.value.trim() : ''; const wordCount = text ? text.split(/\\s+/).filter(w => w.length > 0).length : 0; const len = wordCount;
 
-            charCount.textContent = wordCount.toLocaleString();
+            let wc = (textValue || "").trim().split(/\\s+/).filter(w => w.length > 0).length; charCount.textContent = wc.toLocaleString();
 
             console.log('📊 Early updateCounter - word count:', wordCount);
 
@@ -42731,7 +42731,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (charCount) {
 
-          const wordCount = textValue ? textValue.trim().split(/\\s+/).filter(w => w.length > 0).length : 0; charCount.textContent = wordCount.toLocaleString();
+          const wordCount = textValue ? textValue.trim().split(/\\s+/).filter(w => w.length > 0).length : 0; let wc = (textValue || "").trim().split(/\\s+/).filter(w => w.length > 0).length; charCount.textContent = wc.toLocaleString();
 
           console.log('✅ Updated charCount to:', textLength);
 
@@ -43551,7 +43551,7 @@ window.updateCounter = function updateCounter() {
 
   if (charCount) {
 
-  charCount.textContent = wordCount.toLocaleString();
+  let wc = (textValue || "").trim().split(/\\s+/).filter(w => w.length > 0).length; charCount.textContent = wc.toLocaleString();
 
   }
 
