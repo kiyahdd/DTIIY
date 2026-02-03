@@ -24874,7 +24874,7 @@ function applySelectedFixes() {
 
       const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-      const BACKEND_URL = 'http://localhost:5000';
+      const BACKEND_URL = window.BACKEND_URL || 'http://localhost:5000';
 
       console.log('   BACKEND_URL:', BACKEND_URL);
 
@@ -25630,7 +25630,7 @@ function applySelectedFixes() {
 
         originalTextLength: appState.quickfixOriginalText?.length,
 
-        backendUrl: `http://localhost:5000/quickfix`
+        backendUrl: `${window.BACKEND_URL || 'http://localhost:5000'}/quickfix`
 
       });
 
@@ -37668,7 +37668,7 @@ function rescanQuickFixText() {
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-  const BACKEND_URL = 'http://localhost:5000';
+  const BACKEND_URL = window.BACKEND_URL || 'http://localhost:5000';
 
   const tier = isPro ? 'pro' : 'free';
 
@@ -57172,7 +57172,7 @@ async function analyzeTextWithAPI(text, maxRetries = 2) {
 
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-  const BACKEND_URL = 'http://localhost:5000';
+  const BACKEND_URL = window.BACKEND_URL || 'http://localhost:5000';
 
   const API_ENDPOINT = `${BACKEND_URL}/analyze`;
 
