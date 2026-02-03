@@ -7483,7 +7483,7 @@ body.modal-open .input-section {
 
         <div style="position: relative; margin-top: -24px;">
 
-          <textarea id="quickfixEssayInput" placeholder="Paste your essay here (up to 1,500 words)..."  style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;"></textarea>
+          <textarea id="quickfixEssayInput" placeholder="Paste your essay here (up to 1,500 words)..." oninput="(function(el){ var words = el.value.trim().split(/\s+/).filter(function(w){return w.length>0}); if(words.length>1500){ el.value = words.slice(0,1500).join(' '); words = words.slice(0,1500); } var countEl = document.getElementById('quickfixFlowCharCount'); if(countEl) countEl.textContent = words.length.toLocaleString(); })(this)" style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;"></textarea>
 
           <div class="quickfix-char-counter" style="position: absolute; bottom: 15px; right: 15px; text-align: right; color: #6b7280; font-size: 14px; background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 4px;"><span id="quickfixFlowCharCount">0</span>/1500</div>
 
@@ -11047,7 +11047,7 @@ body.modal-open .input-section {
 
           <div class="input-section">
 
-            <textarea id="proScanInput" class="textarea" placeholder="Paste your essay here (up to 1,500 words)..."  style="width: 100%; height: 180px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; font-family: inherit; font-size: 15px; resize: vertical; transition: border-color 0.2s; margin-bottom: 12px; white-space: pre-wrap;"></textarea>
+            <textarea id="proScanInput" class="textarea" placeholder="Paste your essay here (up to 1,500 words)..." oninput="(function(el){ var words = el.value.trim().split(/\s+/).filter(function(w){return w.length>0}); if(words.length>1500){ el.value = words.slice(0,1500).join(' '); words = words.slice(0,1500); } var countEl = document.getElementById('proCharCount'); if(countEl) countEl.textContent = words.length.toLocaleString() + ' / 1,500'; })(this)" style="width: 100%; height: 180px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; font-family: inherit; font-size: 15px; resize: vertical; transition: border-color 0.2s; margin-bottom: 12px; white-space: pre-wrap;"></textarea>
 
             <div class="char-count" id="proCharCount" style="text-align: right; font-size: 13px; color: #64748b; margin-bottom: 16px;">0 / 1,500</div>
 
@@ -17519,7 +17519,7 @@ function showQuickFixFlow() {
 
     quickfixInput.value = mainInput.value.trim();
 
-    document.getElementById('quickfixFlowCharCount').textContent = quickfixInput.value.length;
+    var qfWords = quickfixInput.value.trim().split(/\s+/).filter(function(w){return w.length>0}); document.getElementById('quickfixFlowCharCount').textContent = qfWords.length;
 
 
 
@@ -42873,7 +42873,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const count = this.value.length;
 
-      document.getElementById('quickfixFlowCharCount').textContent = count;
+      var qfWords2 = (document.getElementById('quickfixEssayInput').value || '').trim().split(/\s+/).filter(function(w){return w.length>0}); document.getElementById('quickfixFlowCharCount').textContent = qfWords2.length;
 
     });
 
