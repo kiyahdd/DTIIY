@@ -61632,69 +61632,32 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
-// Word limit enforcer - runs on page load
+// AGGRESSIVE Word limit enforcer - runs every 100ms
 (function() {
-  const WORD_LIMIT = 1500;
+  const LIMIT = 1500;
   
-  function enforceWordLimit(textarea, counterEl) {
-    if (!textarea) return;
-    
-    function enforce() {
-      const text = textarea.value;
-      const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-      
-      if (words.length > WORD_LIMIT) {
-        textarea.value = words.slice(0, WORD_LIMIT).join(' ');
-      }
-      
-      const finalWords = textarea.value.trim().split(/\s+/).filter(w => w.length > 0);
-      const count = textarea.value.trim() === '' ? 0 : finalWords.length;
-      
-      if (counterEl) {
-        if (counterEl.id === 'charCount') {
-          counterEl.textContent = count.toLocaleString() + ' / 1,500 words';
-        } else if (counterEl.id === 'proCharCount') {
-          counterEl.textContent = count.toLocaleString() + ' / 1,500';
-        } else if (counterEl.id === 'quickfixFlowCharCount') {
-          counterEl.textContent = count.toLocaleString();
-        }
+  function truncate(ta) {
+    if (!ta || !ta.value) return;
+    var words = ta.value.trim().split(/\s+/).filter(function(w){return w.length>0});
+    if (words.length > LIMIT) {
+      var cursorPos = ta.selectionStart;
+      ta.value = words.slice(0, LIMIT).join(' ');
+      // Try to restore cursor if possible
+      if (cursorPos < ta.value.length) {
+        ta.selectionStart = ta.selectionEnd = cursorPos;
       }
     }
-    
-    textarea.addEventListener('input', enforce);
-    textarea.addEventListener('paste', function() { setTimeout(enforce, 0); });
-    textarea.addEventListener('keyup', enforce);
   }
   
-  // Wait for DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  setInterval(function() {
+    truncate(document.getElementById('essayInput'));
+    truncate(document.getElementById('proScanInput'));
+    truncate(document.getElementById('quickfixEssayInput'));
+  }, 100);
   
-  function init() {
-    // Main textarea
-    enforceWordLimit(
-      document.getElementById('essayInput'),
-      document.getElementById('charCount')
-    );
-    
-    // Pro dashboard
-    enforceWordLimit(
-      document.getElementById('proScanInput'),
-      document.getElementById('proCharCount')
-    );
-    
-    // QuickFix
-    enforceWordLimit(
-      document.getElementById('quickfixEssayInput'),
-      document.getElementById('quickfixFlowCharCount')
-    );
-    
-    console.log('Word limit enforcer loaded');
-  }
+  console.log('AGGRESSIVE word limit enforcer active');
 })();
 </script>
 </body>
