@@ -61633,31 +61633,89 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
-// AGGRESSIVE Word limit enforcer - runs every 100ms
+// BLOCK input when at word limit
 (function() {
   const LIMIT = 1500;
+  var lastValidValue = {};
   
-  function truncate(ta) {
-    if (!ta || !ta.value) return;
-    var words = ta.value.trim().split(/\s+/).filter(function(w){return w.length>0});
-    if (words.length > LIMIT) {
-      var cursorPos = ta.selectionStart;
-      ta.value = words.slice(0, LIMIT).join(' ');
-      // Try to restore cursor if possible
-      if (cursorPos < ta.value.length) {
-        ta.selectionStart = ta.selectionEnd = cursorPos;
-      }
-    }
+  function getWordCount(text) {
+    if (!text || !text.trim()) return 0;
+    return text.trim().split(/\s+/).filter(function(w){return w.length>0}).length;
   }
   
-  setInterval(function() {
-    truncate(document.getElementById('essayInput'));
-    truncate(document.getElementById('proScanInput'));
-    truncate(document.getElementById('quickfixEssayInput'));
-  }, 100);
+  function truncateToWords(text, limit) {
+    var words = text.trim().split(/\s+/).filter(function(w){return w.length>0});
+    if (words.length <= limit) return text;
+    return words.slice(0, limit).join(' ');
+  }
   
-  console.log('AGGRESSIVE word limit enforcer active');
+  function setupBlocker(id) {
+    var ta = document.getElementById(id);
+    if (!ta) return;
+    
+    // Store initial value
+    lastValidValue[id] = ta.value;
+    
+    // On ANY input, check and revert if over limit
+    ta.addEventListener('input', function(e) {
+      var wc = getWordCount(ta.value);
+      if (wc > LIMIT) {
+        // Over limit - truncate immediately
+        ta.value = truncateToWords(ta.value, LIMIT);
+        lastValidValue[id] = ta.value;
+      } else if (wc === LIMIT) {
+        // At exactly limit - only allow if we're reducing (e.g. backspace)
+        if (ta.value.length > (lastValidValue[id] || '').length) {
+          // Trying to add - check if it's adding to word count
+          var oldWc = getWordCount(lastValidValue[id]);
+          if (wc > oldWc) {
+            // Revert
+            ta.value = lastValidValue[id];
+          } else {
+            // Allow (same word count, just modifying existing)
+            lastValidValue[id] = ta.value;
+          }
+        } else {
+          // Reducing - allow
+          lastValidValue[id] = ta.value;
+        }
+      } else {
+        // Under limit - save as valid
+        lastValidValue[id] = ta.value;
+      }
+    }, true);
+    
+    // On paste, intercept and truncate
+    ta.addEventListener('paste', function(e) {
+      e.preventDefault();
+      var paste = (e.clipboardData || window.clipboardData).getData('text');
+      var currentText = ta.value;
+      var start = ta.selectionStart;
+      var end = ta.selectionEnd;
+      var newText = currentText.substring(0, start) + paste + currentText.substring(end);
+      var truncated = truncateToWords(newText, LIMIT);
+      ta.value = truncated;
+      lastValidValue[id] = truncated;
+      // Trigger input event for counters
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }, true);
+    
+    console.log('Word limit blocker active for:', id);
+  }
+  
+  function init() {
+    setupBlocker('essayInput');
+    setupBlocker('proScanInput');
+    setupBlocker('quickfixEssayInput');
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
 </script>
 </body>
