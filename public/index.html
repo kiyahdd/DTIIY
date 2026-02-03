@@ -61634,81 +61634,31 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
-// BLOCK input when at word limit
 (function() {
-  const LIMIT = 1500;
-  var lastValidValue = {};
-  
-  function getWordCount(text) {
-    if (!text || !text.trim()) return 0;
-    return text.trim().split(/\s+/).filter(function(w){return w.length>0}).length;
+  function enforce(ta) {
+    if (!ta) return;
+    var text = ta.value || '';
+    var words = text.trim() === '' ? [] : text.trim().split(/\s+/);
+    if (words.length > 1500) {
+      ta.value = words.slice(0, 1500).join(' ');
+    }
   }
   
-  function truncateToWords(text, limit) {
-    var words = text.trim().split(/\s+/).filter(function(w){return w.length>0});
-    if (words.length <= limit) return text;
-    return words.slice(0, limit).join(' ');
-  }
-  
-  function setupBlocker(id) {
+  function setup(id) {
     var ta = document.getElementById(id);
     if (!ta) return;
     
-    // Store initial value
-    lastValidValue[id] = ta.value;
-    
-    // On ANY input, check and revert if over limit
-    ta.addEventListener('input', function(e) {
-      var wc = getWordCount(ta.value);
-      if (wc > LIMIT) {
-        // Over limit - truncate immediately
-        ta.value = truncateToWords(ta.value, LIMIT);
-        lastValidValue[id] = ta.value;
-      } else if (wc === LIMIT) {
-        // At exactly limit - only allow if we're reducing (e.g. backspace)
-        if (ta.value.length > (lastValidValue[id] || '').length) {
-          // Trying to add - check if it's adding to word count
-          var oldWc = getWordCount(lastValidValue[id]);
-          if (wc > oldWc) {
-            // Revert
-            ta.value = lastValidValue[id];
-          } else {
-            // Allow (same word count, just modifying existing)
-            lastValidValue[id] = ta.value;
-          }
-        } else {
-          // Reducing - allow
-          lastValidValue[id] = ta.value;
-        }
-      } else {
-        // Under limit - save as valid
-        lastValidValue[id] = ta.value;
-      }
-    }, true);
-    
-    // On paste, intercept and truncate
-    ta.addEventListener('paste', function(e) {
-      e.preventDefault();
-      var paste = (e.clipboardData || window.clipboardData).getData('text');
-      var currentText = ta.value;
-      var start = ta.selectionStart;
-      var end = ta.selectionEnd;
-      var newText = currentText.substring(0, start) + paste + currentText.substring(end);
-      var truncated = truncateToWords(newText, LIMIT);
-      ta.value = truncated;
-      lastValidValue[id] = truncated;
-      // Trigger input event for counters
-      ta.dispatchEvent(new Event('input', { bubbles: true }));
-    }, true);
-    
-    console.log('Word limit blocker active for:', id);
+    ta.addEventListener('input', function() { enforce(ta); });
+    ta.addEventListener('paste', function() { setTimeout(function() { enforce(ta); }, 0); });
+    console.log('Enforcer ready:', id);
   }
   
   function init() {
-    setupBlocker('essayInput');
-    setupBlocker('proScanInput');
-    setupBlocker('quickfixEssayInput');
+    setup('essayInput');
+    setup('proScanInput'); 
+    setup('quickfixEssayInput');
   }
   
   if (document.readyState === 'loading') {
