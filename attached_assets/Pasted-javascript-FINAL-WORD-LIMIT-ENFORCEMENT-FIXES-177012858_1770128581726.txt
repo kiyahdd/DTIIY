@@ -1,0 +1,359 @@
+javascript
+// ============================================
+// FINAL WORD LIMIT ENFORCEMENT - FIXES DELETE/REPLACE
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🔒 FINAL word limit solution initializing...');
+  
+  // Track what keys are being pressed
+  const keyState = {
+    lastKey: null,
+    isDeleting: false,
+    consecutiveDeletes: 0
+  };
+  
+  // Configuration
+  const textareas = [
+    { id: 'essayInput', limit: 500, counter: 'charCount', name: 'Free' },
+    { id: 'proScanInput', limit: 1500, counter: 'proScanCharCount', name: 'Pro' },
+    { id: 'quickfixEssayInput', limit: 1500, counter: 'quickfixFlowCharCount', name: 'QuickFix' }
+  ];
+  
+  textareas.forEach(config => {
+    const textarea = document.getElementById(config.id);
+    const counter = document.getElementById(config.counterId);
+    
+    if (!textarea) return;
+    
+    console.log(`✅ Setting up ${config.name} (${config.id})`);
+    
+    // ========== CRITICAL: Track the ACTUAL value changes ==========
+    let lastActualValue = textarea.value;
+    let lastWordCount = 0;
+    
+    // Function to count words
+    function countWords(text) {
+      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    }
+    
+    // Update display
+    function updateDisplay() {
+      const currentValue = textarea.value;
+      const wordCount = countWords(currentValue);
+      lastActualValue = currentValue;
+      lastWordCount = wordCount;
+      
+      if (counter) {
+        counter.textContent = wordCount.toLocaleString();
+        
+        if (wordCount >= config.limit) {
+          counter.style.color = '#dc2626';
+          counter.style.fontWeight = '700';
+          textarea.style.borderColor = '#dc2626';
+        } else {
+          counter.style.color = '#6b7280';
+          counter.style.fontWeight = '400';
+          textarea.style.borderColor = '#e5e7eb';
+        }
+      }
+      
+      return wordCount;
+    }
+    
+    // ========== THE FIX: Track what will happen ==========
+    
+    // KEYDOWN: Check what WOULD happen if key is allowed
+    textarea.addEventListener('keydown', function(e) {
+      const key = e.key;
+      const keyCode = e.keyCode || e.which;
+      
+      // Track what's happening
+      if (key === 'Backspace' || key === 'Delete' || keyCode === 8 || keyCode === 46) {
+        keyState.isDeleting = true;
+        keyState.consecutiveDeletes++;
+        keyState.lastKey = 'delete';
+      } else {
+        keyState.isDeleting = false;
+        keyState.consecutiveDeletes = 0;
+        keyState.lastKey = key;
+      }
+      
+      // Get current state
+      const currentValue = textarea.value;
+      const currentWordCount = countWords(currentValue);
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      const hasSelection = selectionStart !== selectionEnd;
+      
+      // Calculate what the new text WOULD be
+      let newValue = currentValue;
+      let newWordCount = currentWordCount;
+      
+      if (key === 'Backspace' || keyCode === 8) {
+        // Backspace - remove character before cursor
+        if (hasSelection) {
+          newValue = currentValue.substring(0, selectionStart) + 
+                    currentValue.substring(selectionEnd);
+        } else if (selectionStart > 0) {
+          newValue = currentValue.substring(0, selectionStart - 1) + 
+                    currentValue.substring(selectionStart);
+        }
+        newWordCount = countWords(newValue);
+      } 
+      else if (key === 'Delete' || keyCode === 46) {
+        // Delete - remove character after cursor
+        if (hasSelection) {
+          newValue = currentValue.substring(0, selectionStart) + 
+                    currentValue.substring(selectionEnd);
+        } else if (selectionStart < currentValue.length) {
+          newValue = currentValue.substring(0, selectionStart) + 
+                    currentValue.substring(selectionStart + 1);
+        }
+        newWordCount = countWords(newValue);
+      }
+      else if (key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Regular character key
+        if (hasSelection) {
+          newValue = currentValue.substring(0, selectionStart) + 
+                    key + 
+                    currentValue.substring(selectionEnd);
+        } else {
+          newValue = currentValue.substring(0, selectionStart) + 
+                    key + 
+                    currentValue.substring(selectionStart);
+        }
+        newWordCount = countWords(newValue);
+      }
+      
+      // Check if the new text would exceed limit
+      if (newWordCount > config.limit) {
+        console.log(`🚫 ${config.name}: Would exceed limit (${newWordCount} > ${config.limit})`);
+        e.preventDefault();
+        return false;
+      }
+      
+      // Always allow deletions (they reduce word count)
+      if (keyState.isDeleting) {
+        return true;
+      }
+      
+      // Block if at limit and trying to add characters
+      if (currentWordCount >= config.limit && !keyState.isDeleting) {
+        console.log(`🚫 ${config.name}: At limit, blocking "${key}"`);
+        e.preventDefault();
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // INPUT: Handle actual changes (paste, drag-drop, etc.)
+    textarea.addEventListener('input', function(e) {
+      const currentValue = textarea.value;
+      const wordCount = countWords(currentValue);
+      
+      // If over limit after input, truncate
+      if (wordCount > config.limit) {
+        console.log(`✂️ ${config.name}: Over limit (${wordCount}), truncating...`);
+        
+        // Find where to truncate
+        const words = currentValue.trim().split(/\s+/);
+        if (words.length > config.limit) {
+          // Keep only first 'limit' words
+          const regex = /\S+/g;
+          let truncated = '';
+          let charIndex = 0;
+          let wordsKept = 0;
+          let match;
+          
+          while ((match = regex.exec(currentValue)) !== null && wordsKept < config.limit) {
+            const word = match[0];
+            const wordStart = match.index;
+            const wordEnd = wordStart + word.length;
+            
+            if (wordsKept === 0) {
+              truncated = currentValue.substring(0, wordEnd);
+            } else {
+              const whitespace = currentValue.substring(charIndex, wordStart);
+              truncated += whitespace + word;
+            }
+            
+            charIndex = wordEnd;
+            wordsKept++;
+          }
+          
+          textarea.value = truncated;
+        }
+      }
+      
+      updateDisplay();
+    });
+    
+    // PASTE: Handle paste events
+    textarea.addEventListener('paste', function(e) {
+      e.preventDefault();
+      
+      const pastedText = e.clipboardData.getData('text');
+      if (!pastedText.trim()) return;
+      
+      const currentValue = textarea.value;
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      const hasSelection = selectionStart !== selectionEnd;
+      
+      // Calculate what the new text would be
+      let newValue;
+      if (hasSelection) {
+        newValue = currentValue.substring(0, selectionStart) + 
+                  pastedText + 
+                  currentValue.substring(selectionEnd);
+      } else {
+        newValue = currentValue.substring(0, selectionStart) + 
+                  pastedText + 
+                  currentValue.substring(selectionStart);
+      }
+      
+      const newWordCount = countWords(newValue);
+      
+      if (newWordCount <= config.limit) {
+        // It fits
+        textarea.value = newValue;
+        console.log(`✅ ${config.name}: Pasted ${countWords(pastedText)} words`);
+      } else {
+        // Doesn't fit - paste only what fits
+        const currentWordCount = countWords(currentValue);
+        const wordsAvailable = config.limit - currentWordCount;
+        
+        if (wordsAvailable <= 0) {
+          console.log(`🚫 ${config.name}: No space for paste`);
+          return;
+        }
+        
+        // Calculate how much of pasted text we can use
+        let allowedChars = 0;
+        let wordCount = 0;
+        const regex = /\S+/g;
+        let match;
+        
+        while ((match = regex.exec(pastedText)) !== null && wordCount < wordsAvailable) {
+          allowedChars = match.index + match[0].length;
+          wordCount++;
+        }
+        
+        const truncatedPaste = pastedText.substring(0, allowedChars);
+        
+        if (hasSelection) {
+          textarea.value = currentValue.substring(0, selectionStart) + 
+                          truncatedPaste + 
+                          currentValue.substring(selectionEnd);
+        } else {
+          textarea.value = currentValue.substring(0, selectionStart) + 
+                          truncatedPaste + 
+                          currentValue.substring(selectionStart);
+        }
+        
+        console.log(`✂️ ${config.name}: Partial paste (${wordsAvailable} words)`);
+      }
+      
+      updateDisplay();
+    });
+    
+    // KEYUP: Final check after key is released
+    textarea.addEventListener('keyup', function() {
+      updateDisplay();
+      keyState.isDeleting = false;
+    });
+    
+    // ========== SAFETY NETS ==========
+    
+    // Blur event as final check
+    textarea.addEventListener('blur', function() {
+      const wordCount = countWords(textarea.value);
+      if (wordCount > config.limit) {
+        const words = textarea.value.trim().split(/\s+/);
+        if (words.length > config.limit) {
+          textarea.value = words.slice(0, config.limit).join(' ');
+          updateDisplay();
+        }
+      }
+    });
+    
+    // Periodically check
+    setInterval(() => {
+      const wordCount = countWords(textarea.value);
+      if (wordCount > config.limit) {
+        console.warn(`⚠️ ${config.name}: Safety check triggered (${wordCount} words)`);
+        const words = textarea.value.trim().split(/\s+/);
+        if (words.length > config.limit) {
+          textarea.value = words.slice(0, config.limit).join(' ');
+          updateDisplay();
+        }
+      }
+    }, 1000);
+    
+    // ========== INITIAL SETUP ==========
+    
+    // Remove inline handlers
+    textarea.removeAttribute('oninput');
+    textarea.removeAttribute('onkeydown');
+    textarea.removeAttribute('onpaste');
+    textarea.removeAttribute('onkeyup');
+    
+    // Initial update
+    updateDisplay();
+    
+    // Expose API
+    window[`get${config.id}Value`] = () => textarea.value;
+    window[`get${config.id}WordCount`] = () => countWords(textarea.value);
+  });
+  
+  console.log('🎉 FINAL word limit solution ready!');
+  
+  // Debug function
+  window.checkAllLimits = function() {
+    console.log('🔍 Checking all limits:');
+    textareas.forEach(config => {
+      const textarea = document.getElementById(config.id);
+      if (textarea) {
+        const words = textarea.value.trim().split(/\s+/).filter(w => w.length > 0);
+        console.log(`  ${config.name}: ${words.length}/${config.limit} words`);
+      }
+    });
+  };
+});
+THE CRITICAL FIX IS HERE:
+javascript
+// KEYDOWN: Check what WOULD happen if key is allowed
+textarea.addEventListener('keydown', function(e) {
+  // ...calculate what the new text WOULD be...
+  
+  // Check if the new text would exceed limit
+  if (newWordCount > config.limit) {
+    e.preventDefault();
+    return false;
+  }
+  
+  // Always allow deletions (they reduce word count)
+  if (keyState.isDeleting) {
+    return true;
+  }
+  
+  // Block if at limit and trying to add characters
+  if (currentWordCount >= config.limit && !keyState.isDeleting) {
+    e.preventDefault();
+    return false;
+  }
+  
+  return true;
+});
+WHAT THIS DOES DIFFERENTLY:
+Calculates the FUTURE state - It simulates what the text WOULD BE if the key is allowed
+
+Tracks deletions separately - Knows when you're deleting vs. adding
+
+Allows deletion even at limit - You can always delete
+
+Blocks addition at limit - Prevents adding when already at limit
+
+Handles the delete-and-replace scenario - After deleting, you can type again because word count is now below limit
