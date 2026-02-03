@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Info Box Separation</title>
+    <style>
+        .test-section {
+            margin: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        #quickfixInfoMessage {
+            background: #e0f2fe;
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+        #quickfixInfoBox {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            text-align: center;
+            display: none;
+        }
+        .status {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Info Box Separation</h1>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button class="test-button" onclick="testHellaSus()">Test Hella Sus (70+)</button>
+        <button class="test-button" onclick="testKindaSus()">Test Kinda Sus (30-69)</button>
+        <button class="test-button" onclick="testClean()">Test Clean (0-29)</button>
+        <button class="test-button" onclick="testProUser()">Test Pro User</button>
+        <button class="test-button" onclick="resetAll()">Reset All</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Bonus Fix + Rescan Box</h2>
+        <div style="background: #f0fdf4; border: 2px solid #4ade80; border-radius: 8px; padding: 24px; margin: 24px 0; text-align: center;">
+            <h3 style="font-size: 24px; font-weight: 700; color: #1e3a8a; margin: 0 0 8px 0;">⚡ Bonus Fix + Rescan</h3>
+            <p style="color: #374151; margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Your score's still sus. Use our fixes instead? You get a guaranteed score drop + bonus rescan.</p>
+        </div>
+        
+        <h2>Info Box</h2>
+        <div id="quickfixInfoBox">
+            <h3 id="quickfixInfoTitle">Title will appear here</h3>
+            <p>Info box content</p>
+        </div>
+        
+        <div class="status" id="testStatus">Ready to test</div>
+    </div>
+
+    <script>
+        let isPro = false;
+
+        function testHellaSus() {
+            console.log('Testing Hella Sus (70+)');
+            updateInfoBox(75, false);
+        }
+
+        function testKindaSus() {
+            console.log('Testing Kinda Sus (30-69)');
+            updateInfoBox(45, false);
+        }
+
+        function testClean() {
+            console.log('Testing Clean (0-29)');
+            updateInfoBox(15, false);
+        }
+
+        function testProUser() {
+            console.log('Testing Pro User (should hide all boxes)');
+            isPro = true;
+            updateInfoBox(75, true); // Test with Hella Sus score but Pro user
+        }
+
+        function resetAll() {
+            console.log('Resetting all');
+            isPro = false;
+            const infoBox = document.getElementById('quickfixInfoBox');
+            const statusEl = document.getElementById('testStatus');
+            
+            if (infoBox) infoBox.style.display = 'none';
+            if (statusEl) statusEl.textContent = 'Ready to test';
+        }
+
+        function updateInfoBox(afterScore, proUser) {
+            const infoBox = document.getElementById('quickfixInfoBox');
+            const titleEl = document.getElementById('quickfixInfoTitle');
+            const statusEl = document.getElementById('testStatus');
+
+            // Reset first
+            if (infoBox) infoBox.style.display = 'none';
+
+            if (afterScore >= 70) {
+                // Hella Sus
+                if (infoBox && !proUser) {
+                    infoBox.style.display = 'block';
+                    if (titleEl) titleEl.textContent = 'Score still high?';
+                }
+                if (statusEl) statusEl.textContent = `Hella Sus (${afterScore}%) - ${proUser ? 'Pro User (Hidden)' : 'QuickFix (Shown)'}`;
+            } else if (afterScore >= 30) {
+                // Kinda Sus
+                if (infoBox && !proUser) {
+                    infoBox.style.display = 'block';
+                    if (titleEl) titleEl.textContent = 'Score still mid?';
+                }
+                if (statusEl) statusEl.textContent = `Kinda Sus (${afterScore}%) - ${proUser ? 'Pro User (Hidden)' : 'QuickFix (Shown)'}`;
+            } else {
+                // Clean
+                if (statusEl) statusEl.textContent = `Clean (${afterScore}%) - All Hidden`;
+            }
+
+            console.log('Test complete:', {
+                afterScore,
+                proUser,
+                infoBoxVisible: infoBox ? infoBox.style.display === 'block' : false
+            });
+        }
+    </script>
+</body>
+</html>
