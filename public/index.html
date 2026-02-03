@@ -10898,7 +10898,48 @@ body.modal-open .input-section {
 
 
 
-  </style>
+  
+/* Pro Chat Support Widget */
+@keyframes chatTyping {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+
+@keyframes chatSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes chatPulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,168,232,0.3); }
+  50% { box-shadow: 0 4px 20px rgba(0,168,232,0.5); }
+}
+
+#proChatWidget {
+  animation: chatSlideIn 0.3s ease-out;
+}
+
+#chatToggleBtn {
+  animation: chatPulse 2s infinite;
+}
+
+#chatToggleBtn:hover {
+  transform: scale(1.1);
+}
+
+.chat-message-user {
+  background: linear-gradient(135deg, #00a8e8, #0077b6) !important;
+  color: white !important;
+  margin-left: auto !important;
+  border-bottom-right-radius: 4px !important;
+}
+
+.chat-message-assistant {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+  border-bottom-left-radius: 4px !important;
+}
+</style>
 
 
 
@@ -42430,7 +42471,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (
 
-        msg.id !== 'rotatingCleanMessage' &&
+        msg.id !== 'rotatingCleanMessage' && msg.id !== 'chatMessages' &&
 
         msg.id !== 'freeWarningMessageBox' &&
 
@@ -42468,7 +42509,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (
 
-        msg.id !== 'rotatingCleanMessage' &&
+        msg.id !== 'rotatingCleanMessage' && msg.id !== 'chatMessages' &&
 
         msg.id !== 'freeWarningMessageBox' &&
 
@@ -61923,6 +61964,288 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('🎉 ALL word limit systems ready!');
   console.log('💡 Tip: Run debugWordLimits() in console to check all textareas');
 });
+</script>
+
+<!-- Pro Priority AI Chat Support Widget -->
+<div id="proChatWidget" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 10000;">
+  <div style="width: 360px; height: 520px; background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;">
+    
+    <!-- Chat Header -->
+    <div style="background: linear-gradient(135deg, #00a8e8, #0b0646); color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 24px;">💎</span>
+        <div>
+          <h4 style="margin: 0; font-size: 16px; font-weight: 700;">Pro Priority Support</h4>
+          <p style="margin: 2px 0 0 0; font-size: 11px; opacity: 0.9;">AI-powered • 24/7 • Instant</p>
+        </div>
+      </div>
+      <button onclick="window.proChatSupport.toggleChat()" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 18px; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">×</button>
+    </div>
+    
+    <!-- Chat Messages -->
+    <div id="chatMessages" style="flex: 1; padding: 16px; overflow-y: auto; background: #f8f9fa;">
+      <!-- Welcome message will be inserted by JS -->
+    </div>
+    
+    <!-- Chat Input -->
+    <div style="padding: 12px 16px; border-top: 1px solid #e5e7eb; background: white;">
+      <div style="display: flex; gap: 8px;">
+        <input 
+          id="chatInput" 
+          type="text" 
+          placeholder="Ask about False Flag Fixer..." 
+          maxlength="800"
+          style="flex: 1; padding: 12px 16px; border: 1px solid #d1d5db; border-radius: 24px; font-size: 14px; outline: none;"
+          onkeypress="if(event.key==='Enter')window.proChatSupport.sendMessage()"
+        >
+        <button 
+          onclick="window.proChatSupport.sendMessage()"
+          style="background: linear-gradient(135deg, #00a8e8, #0b0646); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;"
+        >
+          ➤
+        </button>
+      </div>
+      <p id="chatWordCount" style="font-size: 10px; color: #9ca3af; margin: 6px 0 0 0; text-align: center;">
+        💎 Pro feature • 150 word limit per message
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Chat Toggle Button -->
+<button id="chatToggleBtn" onclick="window.proChatSupport.toggleChat()" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #00a8e8, #0b0646); color: white; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 28px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,168,232,0.3); transition: transform 0.2s;">
+  💬
+</button>
+
+<script>
+// ============================================
+// PRO CHAT SUPPORT CLASS
+// ============================================
+class ProChatSupport {
+  constructor() {
+    this.isOpen = false;
+    this.isProUser = false;
+    this.messageHistory = [];
+    this.maxWords = 150;
+  }
+  
+  initialize() {
+    console.log('💬 Pro Chat Support initializing...');
+    this.checkProStatus();
+    
+    if (this.isProUser) {
+      this.showToggleButton();
+      this.addWelcomeMessage();
+      console.log('✅ Pro Chat Support ready for Pro user');
+    } else {
+      console.log('ℹ️ Pro Chat hidden (user is not Pro)');
+    }
+    
+    // Add word count listener to input
+    const input = document.getElementById('chatInput');
+    if (input) {
+      input.addEventListener('input', () => this.updateWordCount());
+    }
+  }
+  
+  checkProStatus() {
+    // Method 1: Check localStorage
+    const isPro = localStorage.getItem('fff_pro_user') === 'true';
+    
+    // Method 2: Check URL parameter (for testing)
+    const urlParams = new URLSearchParams(window.location.search);
+    const testPro = urlParams.get('test_pro') === 'true';
+    
+    // Method 3: Check if on Pro dashboard (quickfixStep6 visible)
+    const proStep = document.getElementById('quickfixStep6');
+    const isOnProDashboard = proStep && proStep.style.display !== 'none' && proStep.classList.contains('active');
+    
+    this.isProUser = isPro || testPro || isOnProDashboard;
+    return this.isProUser;
+  }
+  
+  showToggleButton() {
+    const btn = document.getElementById('chatToggleBtn');
+    if (btn) btn.style.display = 'flex';
+  }
+  
+  hideToggleButton() {
+    const btn = document.getElementById('chatToggleBtn');
+    if (btn) btn.style.display = 'none';
+  }
+  
+  addWelcomeMessage() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    messagesDiv.innerHTML = '';
+    this.addMessage('assistant', "👋 Hi! I'm your Pro Priority Support AI. Ask me anything about False Flag Fixer!");
+    this.addMessage('assistant', "💡 I can help with:\n• How to use QuickFix & Pro features\n• Understanding AI detection\n• Writing tips to sound human\n• Account & billing questions");
+  }
+  
+  toggleChat() {
+    this.isOpen = !this.isOpen;
+    const widget = document.getElementById('proChatWidget');
+    const btn = document.getElementById('chatToggleBtn');
+    
+    if (this.isOpen) {
+      widget.style.display = 'block';
+      btn.style.display = 'none';
+      document.getElementById('chatInput').focus();
+    } else {
+      widget.style.display = 'none';
+      btn.style.display = 'flex';
+    }
+  }
+  
+  updateWordCount() {
+    const input = document.getElementById('chatInput');
+    const countEl = document.getElementById('chatWordCount');
+    if (!input || !countEl) return;
+    
+    const words = input.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+    
+    if (words > this.maxWords) {
+      countEl.textContent = `⚠️ ${words}/${this.maxWords} words - too long!`;
+      countEl.style.color = '#dc2626';
+    } else if (words > this.maxWords * 0.8) {
+      countEl.textContent = `${words}/${this.maxWords} words`;
+      countEl.style.color = '#f59e0b';
+    } else {
+      countEl.textContent = '💎 Pro feature • 150 word limit per message';
+      countEl.style.color = '#9ca3af';
+    }
+  }
+  
+  async sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Check word limit
+    const words = message.split(/\s+/).filter(w => w.length > 0).length;
+    if (words > this.maxWords) {
+      this.addMessage('assistant', `⚠️ Message too long (${words} words). Please keep it under ${this.maxWords} words.\n\nFor full essay analysis, use QuickFix or Pro Dashboard!`);
+      return;
+    }
+    
+    // Re-check Pro status
+    if (!this.checkProStatus()) {
+      this.addMessage('assistant', '🔒 Priority chat is for Pro users only. Upgrade to Pro for instant AI support!');
+      return;
+    }
+    
+    // Add user message and clear input
+    this.addMessage('user', message);
+    input.value = '';
+    this.updateWordCount();
+    
+    // Show typing indicator
+    this.showTypingIndicator();
+    
+    try {
+      const response = await fetch(`${window.BACKEND_URL}/api/chat/pro-support`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: message,
+          user_id: localStorage.getItem('user_id') || 'anon-' + Date.now(),
+          is_pro: true
+        })
+      });
+      
+      const data = await response.json();
+      
+      this.removeTypingIndicator();
+      
+      if (data.error && response.status === 403) {
+        this.addMessage('assistant', '🔒 ' + (data.upgrade_message || 'This feature is for Pro users only.'));
+      } else if (data.error && response.status === 429) {
+        this.addMessage('assistant', '⏳ You\'ve reached the chat limit. Please try again in about an hour.');
+      } else if (data.response) {
+        this.addMessage('assistant', data.response);
+      } else {
+        this.addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+      }
+      
+    } catch (error) {
+      console.error('Chat error:', error);
+      this.removeTypingIndicator();
+      this.addMessage('assistant', '⚠️ Connection issue. Please try again or use the main tool for essay analysis.');
+    }
+  }
+  
+  addMessage(role, content) {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = 'margin: 8px 0; padding: 12px 16px; border-radius: 16px; max-width: 85%; word-break: break-word; font-size: 14px; line-height: 1.5;';
+    
+    if (role === 'user') {
+      messageDiv.className = 'chat-message-user';
+      messageDiv.style.cssText += 'background: linear-gradient(135deg, #00a8e8, #0077b6); color: white; margin-left: auto; border-bottom-right-radius: 4px;';
+    } else {
+      messageDiv.className = 'chat-message-assistant';
+      messageDiv.style.cssText += 'background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 4px;';
+    }
+    
+    // Format content with line breaks and bold
+    const formattedContent = content
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+    
+    messageDiv.innerHTML = formattedContent;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    
+    this.messageHistory.push({ role, content, timestamp: new Date() });
+  }
+  
+  showTypingIndicator() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.id = 'chatTypingIndicator';
+    typingDiv.style.cssText = 'margin: 8px 0; padding: 12px 16px; background: #f1f5f9; border-radius: 16px; display: inline-flex; align-items: center; gap: 6px;';
+    typingDiv.innerHTML = `
+      <div style="width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; animation: chatTyping 1.4s infinite;"></div>
+      <div style="width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; animation: chatTyping 1.4s infinite 0.2s;"></div>
+      <div style="width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; animation: chatTyping 1.4s infinite 0.4s;"></div>
+    `;
+    messagesDiv.appendChild(typingDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+  
+  removeTypingIndicator() {
+    const typing = document.getElementById('chatTypingIndicator');
+    if (typing) typing.remove();
+  }
+}
+
+// Initialize Pro Chat Support
+window.proChatSupport = new ProChatSupport();
+
+// Initialize after DOM is ready and other scripts have run
+setTimeout(() => {
+  window.proChatSupport.initialize();
+}, 1000);
+
+// Also check when Pro dashboard is shown
+const originalShowProDashboard = window.showProDashboard;
+if (typeof originalShowProDashboard === 'function') {
+  window.showProDashboard = function() {
+    originalShowProDashboard.apply(this, arguments);
+    setTimeout(() => {
+      localStorage.setItem('fff_pro_user', 'true');
+      window.proChatSupport.checkProStatus();
+      window.proChatSupport.showToggleButton();
+    }, 500);
+  };
+}
 </script>
 </body>
 

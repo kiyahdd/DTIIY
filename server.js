@@ -1702,6 +1702,186 @@ Do not include explanations or other text.`;
     }
   }
 });
+
+// ============================================
+// PRO PRIORITY AI CHAT SUPPORT
+// ============================================
+
+// Rate limiter for chat
+const chatRateLimits = new Map();
+
+function checkChatRateLimit(userId, isPro) {
+  const limit = isPro ? 50 : 5; // 50/hour for Pro, 5/hour for free
+  const window = 3600000; // 1 hour
+  const now = Date.now();
+  
+  if (!chatRateLimits.has(userId)) {
+    chatRateLimits.set(userId, []);
+  }
+  
+  const requests = chatRateLimits.get(userId).filter(t => now - t < window);
+  
+  if (requests.length >= limit) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  requests.push(now);
+  chatRateLimits.set(userId, requests);
+  return { allowed: true, remaining: limit - requests.length };
+}
+
+// Essay detection for chat
+function isEssayAttempt(message) {
+  const wordCount = message.trim().split(/\s+/).length;
+  
+  // Rule 1: Word limit (150 words max)
+  if (wordCount > 150) {
+    return {
+      blocked: true,
+      reason: `Message too long (${wordCount} words). Chat supports up to 150 words. For full essays, use QuickFix or Pro Dashboard.`
+    };
+  }
+  
+  // Rule 2: Essay/analysis patterns
+  const blockedPatterns = [
+    /analyze this/i, /score this/i, /grade this/i, /rewrite this/i,
+    /fix this essay/i, /make this sound human/i, /check for ai/i,
+    /is this ai/i, /ai generated/i, /check my essay/i, /scan this/i,
+    /here's my essay/i, /here is my essay/i, /my paper/i
+  ];
+  
+  for (const pattern of blockedPatterns) {
+    if (pattern.test(message)) {
+      return {
+        blocked: true,
+        reason: "I can't analyze or rewrite essays in chat. Please use QuickFix or Pro Dashboard for essay analysis."
+      };
+    }
+  }
+  
+  // Rule 3: Long text with academic indicators
+  if (wordCount > 80) {
+    const academicTerms = ['paragraph', 'essay', 'thesis', 'conclusion', 'introduction', 'argument', 'furthermore', 'moreover'];
+    const hasAcademicTerms = academicTerms.some(term => message.toLowerCase().includes(term));
+    if (hasAcademicTerms) {
+      return {
+        blocked: true,
+        reason: "This looks like essay content. For essay analysis, please use the main False Flag Fixer tool."
+      };
+    }
+  }
+  
+  return { blocked: false };
+}
+
+// Pro Support Chat System Prompt
+const PRO_SUPPORT_SYSTEM_PROMPT = `You are False Flag Fixer's Priority Support AI for Pro users.
+
+CRITICAL RULES:
+1. NEVER analyze, rewrite, score, or evaluate user essays
+2. NEVER check if text is AI-generated
+3. If user tries to paste an essay, politely redirect them to use QuickFix or Pro Dashboard
+4. Keep responses concise (2-4 sentences max unless explaining features)
+
+ALLOWED TOPICS:
+1. Tool Usage & Features - How QuickFix/Pro works, understanding scores (Low/Mid/Major Sus)
+2. General AI Detection Education - Common AI trigger words, how Turnitin works, tips to sound human
+3. Account & Billing - Subscription questions, Pro benefits
+4. Technical Support - Bug reports, browser compatibility
+5. Writing Tips (GENERAL only) - Active vs passive voice, sentence variety
+
+DENIED TOPICS (Redirect to main tool):
+- "Can you check this paragraph?" -> Redirect to QuickFix
+- "Is this sentence AI?" -> Redirect to Pro Dashboard
+- Any essay analysis request
+
+RESPONSE STYLE:
+- Friendly but professional
+- Use emojis sparingly (1-2 per message max)
+- Suggest specific tool features when relevant
+- For denied topics, explain briefly and redirect
+
+You are speaking to Pro users who pay for premium features - be appreciative and helpful!`;
+
+app.post('/api/chat/pro-support', async (req, res) => {
+  try {
+    const { message, user_id, is_pro } = req.body;
+    const userId = user_id || 'anonymous-' + Date.now();
+    
+    console.log('💬 Pro Chat request from:', userId, 'isPro:', is_pro);
+    
+    // Check if user is Pro (temporary - check localStorage flag sent from frontend)
+    if (!is_pro) {
+      return res.status(403).json({
+        error: 'Priority chat is for Pro users only',
+        upgrade_message: 'Upgrade to Pro for AI-powered priority support!'
+      });
+    }
+    
+    // Rate limit check
+    const rateCheck = checkChatRateLimit(userId, is_pro);
+    if (!rateCheck.allowed) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: 'You\'ve reached the chat limit. Please try again later.',
+        retry_after: 3600
+      });
+    }
+    
+    // Essay attempt detection
+    const essayCheck = isEssayAttempt(message);
+    if (essayCheck.blocked) {
+      return res.json({
+        response: `⚠️ ${essayCheck.reason}\n\n🔒 **Pro Tip:** For full essay analysis, use:\n• **QuickFix** - One-time deep scan\n• **Pro Dashboard** - Unlimited scans\n\nThis chat is for questions *about* the tool!`,
+        blocked: true,
+        remaining_messages: rateCheck.remaining
+      });
+    }
+    
+    // Call Claude API
+    const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system: PRO_SUPPORT_SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: message }
+        ]
+      })
+    });
+    
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      console.error('Claude API error:', errorText);
+      throw new Error('AI service error');
+    }
+    
+    const data = await apiResponse.json();
+    const aiResponse = data.content[0].text;
+    
+    console.log('✅ Pro Chat response generated for:', userId);
+    
+    return res.json({
+      response: aiResponse,
+      remaining_messages: rateCheck.remaining,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Pro Chat error:', error);
+    return res.status(500).json({
+      response: "I'm having trouble connecting right now. Please try again in a moment, or use the main False Flag Fixer tool for essay analysis.",
+      error: true
+    });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("DTIIY / False Flag Fixer API is live");
 });
@@ -1725,4 +1905,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('   POST /api/search-synonyms - Search for word synonyms');
   console.log('   POST /analyze - Analyze essay');
   console.log('   POST /quickfix - Apply QuickFixes');
+  console.log('   POST /api/chat/pro-support - Pro AI Chat Support');
 });
