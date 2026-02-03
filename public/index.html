@@ -61646,21 +61646,24 @@ window.addEventListener('beforeunload', function() {
   function enforceLimit() {
     ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
       var ta = document.getElementById(id);
-      if (!ta) return;
+      if (!ta || !ta.value) return;
       
-      var words = ta.value.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-      if (words.length > 1500) {
+      var text = ta.value;
+      var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
+      var wordCount = words.length;
+      
+      if (wordCount > 1500) {
+        console.log('ENFORCER: Found', id, 'with', wordCount, 'words, truncating...');
         var truncated = words.slice(0, 1500).join(' ');
-        forceSetValue(ta, truncated);
-        console.log('ENFORCED: Truncated', id, 'to 1500 words');
+        console.log('ENFORCER: Truncated text length:', truncated.length);
+        nativeInputValueSetter.call(ta, truncated);
+        console.log('ENFORCER: After set, textarea length:', ta.value.length);
       }
     });
   }
   
-  // Run every 50ms
-  setInterval(enforceLimit, 50);
-  
-  console.log('Native value enforcer installed');
+  setInterval(enforceLimit, 100);
+  console.log('Debug enforcer installed');
 })();
 </script>
 </body>
