@@ -11333,7 +11333,7 @@ body.modal-open .input-section {
 
           </button>
 
-          <button onclick="window.open('https://dontturnitinyet.com/contact', '_blank');" class="btn-outline" style="padding:12px 24px;min-width:220px;">
+          <button onclick="openProChatOrRedirect()" class="btn-outline" style="padding:12px 24px;min-width:220px;">
 
             Contact Support
 
@@ -62117,6 +62117,78 @@ class ProChatSupport {
     messagesDiv.appendChild(warning);
   }
   
+  openWithSupportGreeting() {
+    // Open the chat widget
+    const widget = document.getElementById('proChatWidget');
+    const btn = document.getElementById('chatToggleBtn');
+    
+    if (widget) {
+      widget.style.display = 'block';
+      if (btn) btn.style.display = 'none';
+      this.isOpen = true;
+      
+      // Clear and add support-specific greeting
+      const messagesDiv = document.getElementById('chatMessages');
+      if (messagesDiv) {
+        messagesDiv.innerHTML = '';
+        
+        // Add beta warning if dev environment
+        const hostname = window.location.hostname;
+        const isDevEnvironment = hostname.includes('replit.dev') || 
+                                hostname.includes('replit.app') || 
+                                hostname.includes('localhost');
+        if (isDevEnvironment) {
+          this.addBetaWarning();
+        }
+        
+        this.addMessage('assistant', "👋 **Hi! I'm your Pro Priority Support AI.**\n\nI can help with:\n• Using QuickFix & Pro features\n• AI detection questions\n• Billing & subscriptions\n• Technical issues\n\n💬 **Type your question below!**");
+        
+        // Add human support option
+        this.addHumanSupportOption();
+      }
+      
+      document.getElementById('chatInput')?.focus();
+    }
+  }
+  
+  addHumanSupportOption() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    const optionDiv = document.createElement('div');
+    optionDiv.className = 'human-support-option';
+    optionDiv.style.cssText = 'margin: 20px 0; padding: 15px; background: linear-gradient(135deg, #00a8e8, #0b0646); border-radius: 10px; text-align: center; color: white; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
+    
+    optionDiv.innerHTML = `
+      <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+        Need Human Help?
+      </div>
+      <p style="font-size: 14px; margin: 0 0 12px 0; opacity: 0.9;">
+        Our support team responds within 24 hours
+      </p>
+      <button onclick="emailHumanSupport()" style="
+        background: white;
+        color: #00a8e8;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      ">
+        <span>Email Human Support</span>
+      </button>
+      <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.8;">
+        Pro users get priority response
+      </p>
+    `;
+    
+    messagesDiv.appendChild(optionDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+  
   toggleChat() {
     this.isOpen = !this.isOpen;
     const widget = document.getElementById('proChatWidget');
@@ -62261,6 +62333,46 @@ class ProChatSupport {
 }
 
 // Initialize Pro Chat Support
+
+// Smart Support Routing Functions
+function openProChatOrRedirect() {
+    const isPro = localStorage.getItem('fff_pro_user') === 'true' || 
+                  new URLSearchParams(window.location.search).has('test_pro');
+    
+    if (isPro && window.proChatSupport) {
+        // Open Pro Chat for Pro users
+        window.proChatSupport.openWithSupportGreeting();
+        return;
+    }
+    
+    // Free users go to contact page
+    window.open('https://dontturnitinyet.com/contact', '_blank');
+}
+
+function emailHumanSupport() {
+    const chatHistory = getChatHistoryForEmail();
+    const subject = 'False Flag Fixer Pro Support Request';
+    const body = 'Please help with:\n\n' +
+                 'Chat History:\n' + chatHistory + '\n\n' +
+                 'Pro User: Yes\n' +
+                 'Timestamp: ' + new Date().toISOString();
+    
+    window.location.href = 'mailto:support@falseflagfixer.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+function getChatHistoryForEmail() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return 'No chat history';
+    
+    const messages = messagesDiv.querySelectorAll('.chat-message');
+    let history = '';
+    messages.forEach(msg => {
+        const role = msg.classList.contains('user') ? 'User' : 'AI';
+        history += role + ': ' + msg.textContent.trim().substring(0, 200) + '\n';
+    });
+    return history || 'No messages';
+}
+
 window.proChatSupport = new ProChatSupport();
 
 // Initialize after DOM is ready and other scripts have run

@@ -1,0 +1,214 @@
+Update Your Contact Support Button:
+html
+<!-- Current button (probably) -->
+<a href="mailto:support@falseflagfixer.com" class="contact-btn">
+    Contact Support
+</a>
+
+<!-- Replace with: -->
+<button onclick="openProChatOrRedirect()" class="contact-btn">
+    Contact Support
+</button>
+2. Smart Routing Function:
+javascript
+function openProChatOrRedirect() {
+    const isPro = localStorage.getItem('fff_pro_user') === 'true' || 
+                  new URLSearchParams(window.location.search).has('test_pro');
+    
+    if (isPro) {
+        // 1. Open Pro Chat Bot
+        openProChat();
+        
+        // 2. Show "Email Human" option in chat
+        setTimeout(() => {
+            addHumanSupportOption();
+        }, 1000);
+        
+        return;
+    }
+    
+    // Free users go directly to email
+    window.location.href = 'mailto:support@falseflagfixer.com?subject=False%20Flag%20Fixer%20Support';
+}
+
+function openProChat() {
+    const chatWidget = document.getElementById('proChatWidget');
+    const chatToggle = document.getElementById('chatToggle');
+    
+    if (chatWidget) {
+        chatWidget.style.display = 'block';
+        if (chatToggle) chatToggle.style.display = 'none';
+        
+        // Auto-add greeting
+        setTimeout(() => {
+            const messagesDiv = document.getElementById('chatMessages');
+            if (messagesDiv && messagesDiv.children.length <= 2) {
+                addChatMessage('assistant', 
+                    `👋 **Hi! I'm your Pro Priority Support AI.**\n\n` +
+                    `I can help with:\n` +
+                    `• Using QuickFix & Pro features\n` +
+                    `• AI detection questions\n` +
+                    `• Billing & subscriptions\n` +
+                    `• Technical issues\n\n` +
+                    `💬 **Type your question, or:**\n` +
+                    `👉 Click "Email Human Support" below if you need a person`
+                );
+            }
+        }, 500);
+    } else {
+        // Fallback to email
+        window.location.href = 'mailto:support@falseflagfixer.com';
+    }
+}
+
+function addHumanSupportOption() {
+    const messagesDiv = document.getElementById('chatMessages');
+    if (!messagesDiv) return;
+    
+    const optionDiv = document.createElement('div');
+    optionDiv.className = 'human-support-option';
+    optionDiv.style.cssText = `
+        margin: 20px 0;
+        padding: 15px;
+        background: linear-gradient(135deg, #00a8e8, #0b0646);
+        border-radius: 10px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    `;
+    
+    optionDiv.innerHTML = `
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+            📧 Need Human Help?
+        </div>
+        <p style="font-size: 14px; margin: 0 0 12px 0; opacity: 0.9;">
+            Our support team responds within 24 hours
+        </p>
+        <button onclick="emailHumanSupport()" style="
+            background: white;
+            color: #00a8e8;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        ">
+            <span>✉️</span>
+            Email Human Support
+        </button>
+        <p style="font-size: 12px; margin: 8px 0 0 0; opacity: 0.8;">
+            Pro users get priority response
+        </p>
+    `;
+    
+    messagesDiv.appendChild(optionDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function emailHumanSupport() {
+    // Get chat history for context
+    const chatHistory = getChatHistory();
+    const userEmail = localStorage.getItem('user_email') || '';
+    
+    const subject = 'False Flag Fixer Pro Support Request';
+    const body = `Please help with:\n\n` +
+                 `Chat History:\n${chatHistory}\n\n` +
+                 `User Email: ${userEmail}\n` +
+                 `Pro User: Yes\n` +
+                 `Timestamp: ${new Date().toISOString()}`;
+    
+    window.location.href = `mailto:support@falseflagfixer.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+3. Enhanced AI Chat with Escalation:
+javascript
+// Update your Claude system prompt
+const UPDATED_SYSTEM_PROMPT = `You are False Flag Fixer's Priority Support AI.
+
+RESPONSE STRATEGY:
+1. Try to solve the user's issue yourself first
+2. If you cannot solve it after 3 attempts, suggest human support
+3. NEVER say "I can't help" - always offer solutions or escalation
+
+ESCALATION TRIGGERS (suggest human support when):
+- User asks for refunds or billing disputes
+- User reports security issues
+- Technical bugs you can't solve
+- Feature requests that need product team
+- Complaints about service
+- User says "I want to talk to a human"
+
+ESCALATION MESSAGE:
+"Let me connect you with our human support team who can better assist with this. They'll respond within 24 hours (Pro users get priority)."
+
+HUMAN SUPPORT BUTTON:
+Always show the "Email Human Support" button at the bottom of your responses if the issue is complex.`;
+4. Add to Your Footer/Navigation:
+html
+<!-- In your footer or navigation -->
+<div class="support-options">
+    <button onclick="openProChatOrRedirect()" class="btn-support">
+        <span>💬</span> Live Chat Support
+    </button>
+    <button onclick="emailHumanSupport()" class="btn-support-outline">
+        <span>✉️</span> Email Support
+    </button>
+</div>
+
+<style>
+.support-options {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.btn-support {
+    background: linear-gradient(to bottom, #00a8e8, #0b0646);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-support-outline {
+    background: white;
+    color: #00a8e8;
+    border: 2px solid #00a8e8;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>
+5. Benefits of This Approach:
+Benefit	Impact
+Reduces support emails	AI handles 70-80% of common questions
+Faster responses	Instant AI vs 24-hour email wait
+24/7 availability	AI works round the clock
+Pro user delight	Feels premium with instant chat
+Collects context	Chat history sent with email escalation
+Scalable	No additional human support staff needed
+6. Analytics to Track:
+javascript
+// Track support interactions
+function trackSupportInteraction(type, resolvedByAI) {
+    // Send to analytics
+    console.log(`Support ${type}: ${resolvedByAI ? 'AI-resolved' : 'Human-escalated'}`);
+    
+    // Store for improvement
+    const stats = JSON.parse(localStorage.getItem('support_stats') || '{"ai": 0, "human": 0}');
+    if (resolvedByAI) stats.ai += 1;
+    else stats.human += 1;
+    localStorage.setItem('support_stats', JSON.stringify(stats));
+}
+Summ
