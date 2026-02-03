@@ -43519,7 +43519,7 @@ window.updateCounter = function updateCounter() {
 
   let textValue = essayInput.value || '';
 
-  let len = textValue.length;
+  let words = (textValue || "").trim().split(/\s+/).filter(w => w.length > 0); let wordCount = words.length; let len = wordCount;
 
 
 
@@ -43527,7 +43527,7 @@ window.updateCounter = function updateCounter() {
 
   if (len > 0) {
 
-    console.log('📊 updateCounter - text detected:', len, 'chars, preview:', textValue.substring(0, 50) + '...');
+    console.log('📊 updateCounter - word count:', len, 'words, preview:', textValue.substring(0, 50) + '...');
 
   }
 
@@ -43535,14 +43535,12 @@ window.updateCounter = function updateCounter() {
 
   // Enforce 5000 character maximum
 
-  if (len > 50000) {
-
-    essayInput.value = textValue.substring(0, 50000);
-
-    len = 5000;
-
+  if (len > 1500) {
+    words = words.slice(0, 1500);
+    essayInput.value = words.join(' ');
+    textValue = essayInput.value;
+    len = 1500;
     showSuccessMessage('Text limited to 1,500 words maximum.');
-
   }
 
 
