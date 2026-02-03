@@ -41945,7 +41945,7 @@ function handleProFileSelect(event) {
 
         // Limit to 1,500 words for Pro
 
-        const limitedText = text.substring(0, 10000);
+        const limitedText = text.substring(0, 50000);
 
         proInput.value = limitedText;
 
@@ -43535,9 +43535,9 @@ window.updateCounter = function updateCounter() {
 
   // Enforce 5000 character maximum
 
-  if (len > 10000) {
+  if (len > 50000) {
 
-    essayInput.value = textValue.substring(0, 10000);
+    essayInput.value = textValue.substring(0, 50000);
 
     len = 5000;
 
