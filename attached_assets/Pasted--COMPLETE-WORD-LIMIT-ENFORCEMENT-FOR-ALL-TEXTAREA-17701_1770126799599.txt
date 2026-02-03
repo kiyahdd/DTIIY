@@ -1,0 +1,317 @@
+// ============================================
+// COMPLETE WORD LIMIT ENFORCEMENT FOR ALL TEXTAREAS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🔒 Word limit enforcement initializing...');
+  
+  // Configuration for all textareas
+  const textareasConfig = [
+    { 
+      id: 'essayInput', 
+      limit: 500, 
+      counterId: 'charCount',
+      name: 'Free Scan'
+    },
+    { 
+      id: 'proScanInput', 
+      limit: 1500, 
+      counterId: 'proScanCharCount',
+      name: 'Pro Scan' 
+    },
+    { 
+      id: 'quickfixEssayInput', 
+      limit: 1500, 
+      counterId: 'quickfixFlowCharCount',
+      name: 'QuickFix' 
+    }
+  ];
+  
+  // Initialize all textareas
+  textareasConfig.forEach(config => {
+    const textarea = document.getElementById(config.id);
+    const counter = document.getElementById(config.counterId);
+    const limit = config.limit;
+    
+    if (!textarea) {
+      console.log(`⚠️ Textarea not found: ${config.id}`);
+      return;
+    }
+    
+    console.log(`✅ Setting up ${config.name} (${config.id}) with ${limit} word limit`);
+    
+    // ========== HELPER FUNCTIONS ==========
+    
+    // Count words accurately
+    function countWords(text) {
+      if (!text.trim()) return 0;
+      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    }
+    
+    // Update counter display
+    function updateCounter() {
+      const text = textarea.value;
+      const wordCount = countWords(text);
+      
+      // Update counter display
+      if (counter) {
+        counter.textContent = wordCount.toLocaleString();
+        
+        // Visual feedback
+        if (wordCount >= limit) {
+          counter.style.color = '#dc2626';
+          counter.style.fontWeight = '700';
+          textarea.style.borderColor = '#dc2626';
+          textarea.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
+        } else if (wordCount >= limit * 0.9) {
+          counter.style.color = '#f59e0b';
+          counter.style.fontWeight = '600';
+          textarea.style.borderColor = '#f59e0b';
+          textarea.style.boxShadow = 'none';
+        } else {
+          counter.style.color = '#6b7280';
+          counter.style.fontWeight = '400';
+          textarea.style.borderColor = '#e5e7eb';
+          textarea.style.boxShadow = 'none';
+        }
+      }
+      
+      // Log if at or near limit
+      if (wordCount >= limit) {
+        console.log(`🚫 ${config.name}: AT LIMIT (${wordCount}/${limit} words)`);
+      } else if (wordCount >= limit * 0.9) {
+        console.log(`⚠️ ${config.name}: NEAR LIMIT (${wordCount}/${limit} words)`);
+      }
+      
+      return wordCount;
+    }
+    
+    // Truncate text to exactly limit words
+    function truncateToLimit(text) {
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+      if (words.length <= limit) return text;
+      
+      // Keep only first 'limit' words
+      const keptWords = words.slice(0, limit);
+      
+      // Reconstruct text with proper spacing
+      let truncatedText = '';
+      let charIndex = 0;
+      let wordCount = 0;
+      
+      // This preserves original formatting better
+      const regex = /\S+/g;
+      let match;
+      
+      while ((match = regex.exec(text)) !== null && wordCount < limit) {
+        const word = match[0];
+        const wordStart = match.index;
+        const wordEnd = wordStart + word.length;
+        
+        // Add the word and any whitespace before it
+        if (wordCount === 0) {
+          truncatedText = text.substring(0, wordEnd);
+        } else {
+          // Find whitespace between previous word and current word
+          const prevMatchEnd = regex.lastIndex - word.length;
+          const whitespace = text.substring(charIndex, wordStart);
+          truncatedText += whitespace + word;
+        }
+        
+        charIndex = wordEnd;
+        wordCount++;
+      }
+      
+      return truncatedText;
+    }
+    
+    // ========== EVENT HANDLERS ==========
+    
+    // PASTE: Handle paste events
+    textarea.addEventListener('paste', function(e) {
+      console.log(`📋 ${config.name}: Paste event detected`);
+      e.preventDefault();
+      
+      const pastedText = e.clipboardData.getData('text');
+      if (!pastedText.trim()) return;
+      
+      const currentText = textarea.value;
+      const currentWordCount = countWords(currentText);
+      
+      // Calculate how many words we can add
+      const availableWords = limit - currentWordCount;
+      
+      if (availableWords <= 0) {
+        console.log(`🚫 ${config.name}: No space for paste (at limit)`);
+        return;
+      }
+      
+      // Count words in pasted text
+      const pastedWords = pastedText.trim().split(/\s+/).filter(w => w.length > 0);
+      
+      if (pastedWords.length <= availableWords) {
+        // Can paste everything
+        const separator = currentText && currentText.slice(-1).match(/\s/) ? '' : ' ';
+        textarea.value = currentText + separator + pastedText;
+        console.log(`✅ ${config.name}: Full paste (${pastedWords.length} words)`);
+      } else {
+        // Can only paste partial text
+        // Find where to truncate the pasted text
+        let allowedChars = 0;
+        let wordCount = 0;
+        const regex = /\S+/g;
+        let match;
+        
+        while ((match = regex.exec(pastedText)) !== null && wordCount < availableWords) {
+          allowedChars = match.index + match[0].length;
+          wordCount++;
+        }
+        
+        const truncatedPaste = pastedText.substring(0, allowedChars);
+        const separator = currentText && currentText.slice(-1).match(/\s/) ? '' : ' ';
+        textarea.value = currentText + separator + truncatedPaste;
+        
+        console.log(`✂️ ${config.name}: Partial paste (${availableWords}/${pastedWords.length} words)`);
+      }
+      
+      updateCounter();
+    });
+    
+    // INPUT: Handle typing, deleting, etc.
+    textarea.addEventListener('input', function() {
+      const wordCount = countWords(textarea.value);
+      
+      if (wordCount > limit) {
+        console.log(`✂️ ${config.name}: Truncating from ${wordCount} to ${limit} words`);
+        textarea.value = truncateToLimit(textarea.value);
+      }
+      
+      updateCounter();
+    });
+    
+    // KEYDOWN: Prevent typing when at limit (but allow deletions)
+    textarea.addEventListener('keydown', function(e) {
+      const wordCount = countWords(textarea.value);
+      
+      // If at or over limit, check what key is being pressed
+      if (wordCount >= limit) {
+        const key = e.keyCode || e.which;
+        
+        // ALWAYS ALLOW THESE KEYS:
+        const alwaysAllowed = [
+          8,  // Backspace
+          46, // Delete
+          9,  // Tab
+          13, // Enter
+          27, // Escape
+          37, 38, 39, 40, // Arrow keys
+          36, 35, 33, 34, // Home, End, Page Up, Page Down
+          16, 17, 18, 91, 93, // Modifier keys
+          20, // Caps Lock
+          144 // Num Lock
+        ];
+        
+        // Allow control keys (Ctrl+A, Ctrl+C, Ctrl+V, etc.)
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+          return true;
+        }
+        
+        // Allow function keys (F1-F12)
+        if (key >= 112 && key <= 123) {
+          return true;
+        }
+        
+        // Check if key is allowed
+        if (alwaysAllowed.indexOf(key) !== -1) {
+          return true;
+        }
+        
+        // Check if it's a character key that would add text
+        const char = String.fromCharCode(key);
+        if (char && /[a-zA-Z0-9\s,\.;:'"!@#$%^&*()_+\-=\[\]{}|\\<>?\/`~]/.test(e.key)) {
+          console.log(`🚫 ${config.name}: Blocked character "${e.key}" (at limit)`);
+          e.preventDefault();
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // FOCUS: Update when textarea gets focus
+    textarea.addEventListener('focus', function() {
+      updateCounter();
+    });
+    
+    // BLUR: Update when textarea loses focus
+    textarea.addEventListener('blur', function() {
+      const wordCount = countWords(textarea.value);
+      if (wordCount > limit) {
+        textarea.value = truncateToLimit(textarea.value);
+        updateCounter();
+      }
+    });
+    
+    // ========== INITIAL SETUP ==========
+    
+    // Remove any existing inline handlers (cleanup)
+    textarea.removeAttribute('oninput');
+    textarea.removeAttribute('onkeydown');
+    textarea.removeAttribute('onpaste');
+    textarea.removeAttribute('onkeypress');
+    
+    // Initial update
+    updateCounter();
+    
+    console.log(`✅ ${config.name} word limit enforcement ready`);
+  });
+  
+  console.log('🎉 ALL word limit enforcement systems ready!');
+  
+  // ========== ADDITIONAL SAFETY CHECKS ==========
+  
+  // Periodically check all textareas (safety net)
+  setInterval(function() {
+    textareasConfig.forEach(config => {
+      const textarea = document.getElementById(config.id);
+      if (!textarea) return;
+      
+      const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+      if (wordCount > config.limit) {
+        console.warn(`⚠️ SAFETY CHECK: ${config.name} had ${wordCount} words (over ${config.limit} limit), truncating...`);
+        
+        // Simple truncation as fallback
+        const words = textarea.value.trim().split(/\s+/);
+        if (words.length > config.limit) {
+          textarea.value = words.slice(0, config.limit).join(' ');
+          
+          // Update counter if exists
+          const counter = document.getElementById(config.counterId);
+          if (counter) {
+            counter.textContent = config.limit.toLocaleString();
+            counter.style.color = '#dc2626';
+            counter.style.fontWeight = '700';
+          }
+        }
+      }
+    });
+  }, 2000); // Check every 2 seconds
+  
+  // ========== DEBUG HELPER ==========
+  
+  // Add a debug function to check all textareas
+  window.debugWordLimits = function() {
+    console.log('🔍 DEBUG WORD LIMITS:');
+    textareasConfig.forEach(config => {
+      const textarea = document.getElementById(config.id);
+      if (textarea) {
+        const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+        console.log(`  ${config.name} (${config.id}): ${wordCount}/${config.limit} words`);
+      } else {
+        console.log(`  ${config.name}: NOT FOUND`);
+      }
+    });
+  };
+  
+  console.log('💡 Tip: Run debugWordLimits() in console to check all textareas');
+});

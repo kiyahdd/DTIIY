@@ -7482,7 +7482,7 @@ body.modal-open .input-section {
 
         <div style="position: relative; margin-top: -24px;">
 
-          <textarea id="quickfixEssayInput" placeholder="Paste your essay here (up to 1,500 words)..." oninput="(function(el){ var words = el.value.trim().split(/\s+/).filter(function(w){return w.length>0}); if(words.length>1500){ el.value = words.slice(0,1500).join(' '); words = words.slice(0,1500); } var countEl = document.getElementById('quickfixFlowCharCount'); if(countEl) countEl.textContent = words.length.toLocaleString(); })(this)" style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;"></textarea>
+          <textarea id="quickfixEssayInput" placeholder="Paste your essay here (up to 1,500 words)..." style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;"></textarea>
 
           <div class="quickfix-char-counter" style="position: absolute; bottom: 15px; right: 15px; text-align: right; color: #6b7280; font-size: 14px; background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 4px;"><span id="quickfixFlowCharCount">0</span>/1500</div>
 
@@ -11046,7 +11046,7 @@ body.modal-open .input-section {
 
           <div class="input-section">
 
-            <textarea id="proScanInput" class="textarea" placeholder="Paste your essay here (up to 1,500 words)..." oninput="(function(el){ var words = el.value.trim().split(/\s+/).filter(function(w){return w.length>0}); if(words.length>1500){ el.value = words.slice(0,1500).join(' '); words = words.slice(0,1500); } var countEl = document.getElementById('proCharCount'); if(countEl) countEl.textContent = words.length.toLocaleString() + ' / 1,500'; })(this)" style="width: 100%; height: 180px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; font-family: inherit; font-size: 15px; resize: vertical; transition: border-color 0.2s; margin-bottom: 12px; white-space: pre-wrap;"></textarea>
+            <textarea id="proScanInput" class="textarea" placeholder="Paste your essay here (up to 1,500 words)..." style="width: 100%; height: 180px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; font-family: inherit; font-size: 15px; resize: vertical; transition: border-color 0.2s; margin-bottom: 12px; white-space: pre-wrap;"></textarea>
 
             <div class="char-count" id="proCharCount" style="text-align: right; font-size: 13px; color: #64748b; margin-bottom: 16px;">0 / 1,500</div>
 
@@ -12074,7 +12074,7 @@ body.modal-open .input-section {
 
 
 
-      <textarea id="essayInput" placeholder="Paste your essay here (minimum 50 words)..."  oninput="if(typeof updateCounter === 'function') updateCounter();" onpaste="setTimeout(function(){ if(typeof updateCounter === 'function') updateCounter(); }, 10);" onchange="if(typeof updateCounter === 'function') updateCounter();" style="white-space: pre-wrap;"></textarea>
+      <textarea id="essayInput" placeholder="Paste your essay here (minimum 50 words)..." onchange="if(typeof updateCounter === 'function') updateCounter();" style="white-space: pre-wrap;"></textarea>
 
 
 
@@ -61639,107 +61639,296 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
+// ============================================
+// COMPLETE WORD LIMIT ENFORCEMENT FOR ALL TEXTAREAS
+// ============================================
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Apply word limit to all essay textareas
-  ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(textareaId) {
-    const textarea = document.getElementById(textareaId);
-    if (!textarea) return;
+  console.log('🔒 Word limit enforcement initializing...');
+  
+  // Configuration for all textareas
+  const textareasConfig = [
+    { 
+      id: 'essayInput', 
+      limit: 1500, 
+      counterId: 'charCount',
+      name: 'Free Scan'
+    },
+    { 
+      id: 'proScanInput', 
+      limit: 1500, 
+      counterId: 'proScanCharCount',
+      name: 'Pro Scan' 
+    },
+    { 
+      id: 'quickfixEssayInput', 
+      limit: 1500, 
+      counterId: 'quickfixFlowCharCount',
+      name: 'QuickFix' 
+    }
+  ];
+  
+  // Initialize all textareas
+  textareasConfig.forEach(config => {
+    const textarea = document.getElementById(config.id);
+    const counter = document.getElementById(config.counterId);
+    const limit = config.limit;
     
-    // Determine which counter to update
-    const counterId = textareaId === 'quickfixEssayInput' ? 'quickfixFlowCharCount' : 'charCount';
-    const counterEl = document.getElementById(counterId);
-    
-    function getWords(text) {
-      return text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
+    if (!textarea) {
+      console.log(`⚠️ Textarea not found: ${config.id}`);
+      return;
     }
     
-    function updateWordCount() {
-      const words = getWords(textarea.value);
-      if (counterEl) {
-        counterEl.textContent = words.length.toLocaleString();
+    console.log(`✅ Setting up ${config.name} (${config.id}) with ${limit} word limit`);
+    
+    // ========== HELPER FUNCTIONS ==========
+    
+    // Count words accurately
+    function countWords(text) {
+      if (!text.trim()) return 0;
+      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    }
+    
+    // Update counter display
+    function updateCounter() {
+      const text = textarea.value;
+      const wordCount = countWords(text);
+      
+      // Update counter display
+      if (counter) {
+        counter.textContent = wordCount.toLocaleString();
+        
+        // Visual feedback
+        if (wordCount >= limit) {
+          counter.style.color = '#dc2626';
+          counter.style.fontWeight = '700';
+          textarea.style.borderColor = '#dc2626';
+          textarea.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
+        } else if (wordCount >= limit * 0.9) {
+          counter.style.color = '#f59e0b';
+          counter.style.fontWeight = '600';
+          textarea.style.borderColor = '#f59e0b';
+          textarea.style.boxShadow = 'none';
+        } else {
+          counter.style.color = '#6b7280';
+          counter.style.fontWeight = '400';
+          textarea.style.borderColor = '#e5e7eb';
+          textarea.style.boxShadow = 'none';
+        }
       }
+      
+      // Log if at or near limit
+      if (wordCount >= limit) {
+        console.log(`🚫 ${config.name}: AT LIMIT (${wordCount}/${limit} words)`);
+      }
+      
+      return wordCount;
     }
     
-    // Prevent paste overflow
+    // Truncate text to exactly limit words
+    function truncateToLimit(text) {
+      const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+      if (words.length <= limit) return text;
+      
+      // Keep only first 'limit' words
+      let truncatedText = '';
+      let wordCount = 0;
+      const regex = /\S+/g;
+      let match;
+      let lastEnd = 0;
+      
+      while ((match = regex.exec(text)) !== null && wordCount < limit) {
+        const word = match[0];
+        const wordEnd = match.index + word.length;
+        lastEnd = wordEnd;
+        wordCount++;
+      }
+      
+      return text.substring(0, lastEnd);
+    }
+    
+    // ========== EVENT HANDLERS ==========
+    
+    // PASTE: Handle paste events
     textarea.addEventListener('paste', function(e) {
+      console.log(`📋 ${config.name}: Paste event detected`);
       e.preventDefault();
+      
       const pastedText = e.clipboardData.getData('text');
+      if (!pastedText.trim()) return;
+      
       const currentText = textarea.value;
+      const currentWordCount = countWords(currentText);
       
-      // Combine and count words
-      const combinedText = currentText + pastedText;
-      const words = getWords(combinedText);
+      // Calculate how many words we can add
+      const availableWords = limit - currentWordCount;
       
-      if (words.length <= 1500) {
-        textarea.value = combinedText;
-      } else {
-        // Paste only up to 1500 words total
-        const allWords = getWords(currentText + ' ' + pastedText);
-        textarea.value = allWords.slice(0, 1500).join(' ');
-        console.log('TRUNCATED: Pasted text cut to 1500 words');
+      if (availableWords <= 0) {
+        console.log(`🚫 ${config.name}: No space for paste (at limit)`);
+        return;
       }
       
-      updateWordCount();
+      // Count words in pasted text
+      const pastedWords = pastedText.trim().split(/\s+/).filter(w => w.length > 0);
+      
+      if (pastedWords.length <= availableWords) {
+        // Can paste everything
+        const separator = currentText && !currentText.slice(-1).match(/\s/) ? ' ' : '';
+        textarea.value = currentText + separator + pastedText;
+        console.log(`✅ ${config.name}: Full paste (${pastedWords.length} words)`);
+      } else {
+        // Can only paste partial text - take first availableWords
+        const allowedPastedWords = pastedWords.slice(0, availableWords);
+        const separator = currentText && !currentText.slice(-1).match(/\s/) ? ' ' : '';
+        textarea.value = currentText + separator + allowedPastedWords.join(' ');
+        
+        console.log(`✂️ ${config.name}: Partial paste (${availableWords}/${pastedWords.length} words)`);
+      }
+      
+      updateCounter();
       
       // Trigger input event for other listeners
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
     
-    // Handle typing/input - truncate if over limit
+    // INPUT: Handle typing, deleting, etc.
     textarea.addEventListener('input', function() {
-      const words = getWords(textarea.value);
+      const wordCount = countWords(textarea.value);
       
-      if (words.length > 1500) {
-        // Find position of 1500th word and truncate
-        const value = textarea.value;
-        const regex = /\S+/g;
-        const wordPositions = [];
-        let match;
-        let count = 0;
-        
-        while ((match = regex.exec(value)) !== null && count < 1500) {
-          wordPositions.push({ start: match.index, end: match.index + match[0].length });
-          count++;
-        }
-        
-        if (wordPositions.length >= 1500) {
-          textarea.value = value.substring(0, wordPositions[1499].end);
-          console.log('TRUNCATED: Input cut to 1500 words');
-        }
+      if (wordCount > limit) {
+        console.log(`✂️ ${config.name}: Truncating from ${wordCount} to ${limit} words`);
+        textarea.value = truncateToLimit(textarea.value);
       }
       
-      updateWordCount();
+      updateCounter();
     });
     
-    // Prevent typing beyond limit
+    // KEYDOWN: Prevent typing when at limit (but allow deletions)
     textarea.addEventListener('keydown', function(e) {
-      const words = getWords(textarea.value);
+      const wordCount = countWords(textarea.value);
       
-      if (words.length >= 1500) {
+      // If at or over limit, check what key is being pressed
+      if (wordCount >= limit) {
         const key = e.keyCode || e.which;
-        // Allow: backspace, delete, tab, escape, enter, arrows, home, end
-        const allowedKeys = [8, 9, 13, 27, 37, 38, 39, 40, 46, 36, 35];
         
-        if (allowedKeys.indexOf(key) !== -1) {
+        // ALWAYS ALLOW THESE KEYS:
+        const alwaysAllowed = [
+          8,  // Backspace
+          46, // Delete
+          9,  // Tab
+          13, // Enter
+          27, // Escape
+          37, 38, 39, 40, // Arrow keys
+          36, 35, 33, 34, // Home, End, Page Up, Page Down
+          16, 17, 18, 91, 93, // Modifier keys
+          20, // Caps Lock
+          144 // Num Lock
+        ];
+        
+        // Allow control keys (Ctrl+A, Ctrl+C, Ctrl+V, etc.)
+        if (e.ctrlKey || e.metaKey || e.altKey) {
           return true;
         }
         
-        // Allow Ctrl/Cmd shortcuts
-        if (e.ctrlKey || e.metaKey) {
+        // Allow function keys (F1-F12)
+        if (key >= 112 && key <= 123) {
           return true;
         }
         
-        // Prevent adding more characters
-        e.preventDefault();
-        return false;
+        // Check if key is allowed
+        if (alwaysAllowed.indexOf(key) !== -1) {
+          return true;
+        }
+        
+        // Block character keys
+        if (e.key && e.key.length === 1) {
+          console.log(`🚫 ${config.name}: Blocked character "${e.key}" (at limit)`);
+          e.preventDefault();
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // FOCUS: Update when textarea gets focus
+    textarea.addEventListener('focus', function() {
+      updateCounter();
+    });
+    
+    // BLUR: Update when textarea loses focus
+    textarea.addEventListener('blur', function() {
+      const wordCount = countWords(textarea.value);
+      if (wordCount > limit) {
+        textarea.value = truncateToLimit(textarea.value);
+        updateCounter();
       }
     });
     
-    console.log('Word limiter attached to: ' + textareaId);
+    // ========== INITIAL SETUP ==========
+    
+    // Remove any existing inline handlers (cleanup)
+    textarea.removeAttribute('oninput');
+    textarea.removeAttribute('onkeydown');
+    textarea.removeAttribute('onpaste');
+    textarea.removeAttribute('onkeypress');
+    
+    // Initial update
+    updateCounter();
+    
+    console.log(`✅ ${config.name} word limit enforcement ready`);
   });
   
-  console.log('Word limit enforcement ready (1500 words max)');
+  console.log('🎉 ALL word limit enforcement systems ready!');
+  
+  // ========== ADDITIONAL SAFETY CHECKS ==========
+  
+  // Periodically check all textareas (safety net)
+  setInterval(function() {
+    textareasConfig.forEach(config => {
+      const textarea = document.getElementById(config.id);
+      if (!textarea) return;
+      
+      const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+      if (wordCount > config.limit) {
+        console.warn(`⚠️ SAFETY CHECK: ${config.name} had ${wordCount} words (over ${config.limit} limit), truncating...`);
+        
+        // Simple truncation as fallback
+        const words = textarea.value.trim().split(/\s+/);
+        if (words.length > config.limit) {
+          textarea.value = words.slice(0, config.limit).join(' ');
+          
+          // Update counter if exists
+          const counter = document.getElementById(config.counterId);
+          if (counter) {
+            counter.textContent = config.limit.toLocaleString();
+            counter.style.color = '#dc2626';
+            counter.style.fontWeight = '700';
+          }
+        }
+      }
+    });
+  }, 2000); // Check every 2 seconds
+  
+  // ========== DEBUG HELPER ==========
+  
+  // Add a debug function to check all textareas
+  window.debugWordLimits = function() {
+    console.log('🔍 DEBUG WORD LIMITS:');
+    textareasConfig.forEach(config => {
+      const textarea = document.getElementById(config.id);
+      if (textarea) {
+        const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
+        console.log(`  ${config.name} (${config.id}): ${wordCount}/${config.limit} words`);
+      } else {
+        console.log(`  ${config.name}: NOT FOUND`);
+      }
+    });
+  };
+  
+  console.log('💡 Tip: Run debugWordLimits() in console to check all textareas');
 });
 </script>
 </body>
