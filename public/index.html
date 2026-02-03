@@ -29,7 +29,7 @@
 <script>
 
   // Global backend URL configuration
-  window.BACKEND_URL = 'http://localhost:5000';
+  if (window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co')) { window.BACKEND_URL = window.location.origin; } else { window.BACKEND_URL = 'http://localhost:5000'; }
 
   // Cache-busting helper: call forceHardReload() to reload with version
 
@@ -11395,11 +11395,11 @@ body.modal-open .input-section {
 
           if (essayInput && charCount) {
 
-            const len = essayInput.value ? essayInput.value.length : 0;
+            const text = essayInput.value ? essayInput.value.trim() : ''; const wordCount = text ? text.split(/\\s+/).filter(w => w.length > 0).length : 0; const len = wordCount;
 
-            charCount.textContent = len.toLocaleString();
+            charCount.textContent = wordCount.toLocaleString();
 
-            console.log('📊 Early updateCounter - length:', len);
+            console.log('📊 Early updateCounter - word count:', wordCount);
 
           }
 
@@ -12075,7 +12075,7 @@ body.modal-open .input-section {
 
 
 
-      <textarea id="essayInput" placeholder="Paste your essay here (minimum 50 characters)..." maxlength="10000" oninput="if(typeof updateCounter === 'function') updateCounter();" onpaste="setTimeout(function(){ if(typeof updateCounter === 'function') updateCounter(); }, 10);" onchange="if(typeof updateCounter === 'function') updateCounter();" style="white-space: pre-wrap;"></textarea>
+      <textarea id="essayInput" placeholder="Paste your essay here (minimum 50 words)..." maxlength="10000" oninput="if(typeof updateCounter === 'function') updateCounter();" onpaste="setTimeout(function(){ if(typeof updateCounter === 'function') updateCounter(); }, 10);" onchange="if(typeof updateCounter === 'function') updateCounter();" style="white-space: pre-wrap;"></textarea>
 
 
 
@@ -42731,7 +42731,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (charCount) {
 
-          charCount.textContent = textLength.toLocaleString();
+          const wordCount = textValue ? textValue.trim().split(/\\s+/).filter(w => w.length > 0).length : 0; charCount.textContent = wordCount.toLocaleString();
 
           console.log('✅ Updated charCount to:', textLength);
 
@@ -42913,7 +42913,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       setTimeout(function() {
 
-        const len = essayInput.value ? essayInput.value.length : 0;
+        const text = essayInput.value ? essayInput.value.trim() : ''; const wordCount = text ? text.split(/\\s+/).filter(w => w.length > 0).length : 0; const len = wordCount;
 
         console.log('📋 Paste processed, length:', len);
 
@@ -43551,7 +43551,7 @@ window.updateCounter = function updateCounter() {
 
   if (charCount) {
 
-  charCount.textContent = len.toLocaleString();
+  charCount.textContent = wordCount.toLocaleString();
 
   }
 
