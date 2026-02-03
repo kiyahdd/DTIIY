@@ -61637,78 +61637,43 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
   var nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-  var lastValidValue = {};
   
-  function getWordCount(text) {
-    if (!text || !text.trim()) return 0;
-    return text.trim().split(/\s+/).filter(function(w) { return w.length > 0; }).length;
+  function truncateWords(text, limit) {
+    var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
+    if (words.length <= limit) return null; // No truncation needed
+    return words.slice(0, limit).join(' ');
   }
   
-  function enforce(ta) {
-    if (!ta) return;
-    var id = ta.id;
-    var text = ta.value || '';
-    var wc = getWordCount(text);
-    
-    if (wc > 1500) {
-      // Over limit - truncate
-      var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-      var truncated = words.slice(0, 1500).join(' ');
+  function enforceLimit(ta) {
+    if (!ta || !ta.value) return;
+    var truncated = truncateWords(ta.value, 1500);
+    if (truncated !== null) {
       nativeSetter.call(ta, truncated);
-      lastValidValue[id] = truncated;
-      console.log('BLOCKED: Over 1500 words, truncated');
-    } else if (wc === 1500) {
-      // At limit - save as valid but don't allow MORE characters
-      var lastLen = (lastValidValue[id] || '').length;
-      if (text.length > lastLen && lastLen > 0) {
-        // Trying to add characters at limit - revert
-        nativeSetter.call(ta, lastValidValue[id]);
-        console.log('BLOCKED: At 1500 words, reverted typing');
-      } else {
-        lastValidValue[id] = text;
-      }
-    } else {
-      // Under limit - save as valid
-      lastValidValue[id] = text;
+      console.log('ENFORCED: Cut to 1500 words');
     }
   }
   
+  // Add listeners to all textareas
   ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
     var ta = document.getElementById(id);
-    if (ta) {
-      lastValidValue[id] = ta.value || '';
-      ta.addEventListener('input', function() {
-        setTimeout(function() { enforce(ta); }, 0);
-      });
-      ta.addEventListener('paste', function() {
-        setTimeout(function() { enforce(ta); }, 50);
-        setTimeout(function() { enforce(ta); }, 150);
-      });
-    }
-  });
-  
-  // Also run on DOMContentLoaded for late-loaded textareas
-  document.addEventListener('DOMContentLoaded', function() {
-    ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
-      var ta = document.getElementById(id);
-      if (ta && !lastValidValue[id]) {
-        lastValidValue[id] = ta.value || '';
-        ta.addEventListener('input', function() {
-          setTimeout(function() { enforce(ta); }, 0);
-        });
-        ta.addEventListener('paste', function() {
-          setTimeout(function() { enforce(ta); }, 50);
-          setTimeout(function() { enforce(ta); }, 150);
-        });
-      }
+    if (!ta) return;
+    
+    ta.addEventListener('input', function() {
+      enforceLimit(ta);
+    });
+    
+    ta.addEventListener('paste', function() {
+      setTimeout(function() { enforceLimit(ta); }, 0);
+      setTimeout(function() { enforceLimit(ta); }, 100);
     });
   });
   
-  console.log('Typing blocker ready');
-})();
+  console.log('Simple word limiter active');
+});
 </script>
 </body>
 
