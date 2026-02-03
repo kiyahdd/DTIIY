@@ -61641,249 +61641,294 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
 // ============================================
-// ULTIMATE WORD LIMIT ENFORCEMENT - FIXED DELETE/REPLACE ISSUE
+// ULTIMATE TEXTAREA WORD LIMIT ENFORCEMENT
+// Handles: Typing, Pasting, Editing, Uploads
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🔒 ULTIMATE word limit enforcement initializing...');
+class WordLimitEnforcer {
+  constructor(config) {
+    this.textarea = document.getElementById(config.id);
+    this.counter = document.getElementById(config.counterId);
+    this.limit = config.limit;
+    this.name = config.name;
+    
+    if (!this.textarea) return;
+    
+    this.init();
+  }
   
-  // Configuration for all textareas - ALL 1500 words
-  const textareasConfig = [
-    { id: 'essayInput', limit: 1500, counterId: 'charCount', name: 'Free Scan' },
-    { id: 'proScanInput', limit: 1500, counterId: 'proScanCharCount', name: 'Pro Scan' },
-    { id: 'quickfixEssayInput', limit: 1500, counterId: 'quickfixFlowCharCount', name: 'QuickFix' }
-  ];
+  init() {
+    console.log(`🔒 Initializing ${this.name} (${this.limit} words)`);
+    
+    this.textarea.removeAttribute('oninput');
+    this.textarea.removeAttribute('onkeydown');
+    this.textarea.removeAttribute('onpaste');
+    this.textarea.removeAttribute('onkeyup');
+    
+    this.lastValue = this.textarea.value;
+    this.lastWordCount = this.countWords(this.textarea.value);
+    
+    this.setupEvents();
+    this.updateCounter();
+    
+    console.log(`✅ ${this.name} ready`);
+  }
   
-  const textareaStates = {};
+  countWords(text) {
+    if (!text || !text.trim()) return 0;
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }
   
-  textareasConfig.forEach(config => {
-    const textarea = document.getElementById(config.id);
-    const counter = document.getElementById(config.counterId);
-    const limit = config.limit;
+  getCurrentState() {
+    return {
+      value: this.textarea.value,
+      wordCount: this.countWords(this.textarea.value),
+      cursorPos: this.textarea.selectionStart,
+      selectionEnd: this.textarea.selectionEnd,
+      hasSelection: this.textarea.selectionStart !== this.textarea.selectionEnd
+    };
+  }
+  
+  updateCounter() {
+    const state = this.getCurrentState();
     
-    if (!textarea) {
-      console.log(`⚠️ Textarea not found: ${config.id}`);
-      return;
-    }
-    
-    console.log(`✅ Setting up ${config.name} (${config.id}) with ${limit} word limit`);
-    
-    textareaStates[config.id] = { value: textarea.value, wordCount: 0, isAtLimit: false, lastKey: null };
-    
-    function countWords(text) {
-      if (!text || !text.trim()) return 0;
-      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
-    }
-    
-    function updateCounter() {
-      const text = textarea.value;
-      const wordCount = countWords(text);
+    if (this.counter) {
+      this.counter.textContent = state.wordCount.toLocaleString();
       
-      textareaStates[config.id].value = text;
-      textareaStates[config.id].wordCount = wordCount;
-      textareaStates[config.id].isAtLimit = wordCount >= limit;
-      
-      if (counter) {
-        counter.textContent = wordCount.toLocaleString();
-        
-        if (wordCount >= limit) {
-          counter.style.color = '#dc2626';
-          counter.style.fontWeight = '700';
-          textarea.style.borderColor = '#dc2626';
-          textarea.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
-        } else if (wordCount >= limit * 0.9) {
-          counter.style.color = '#f59e0b';
-          counter.style.fontWeight = '600';
-          textarea.style.borderColor = '#f59e0b';
-          textarea.style.boxShadow = 'none';
-        } else {
-          counter.style.color = '#6b7280';
-          counter.style.fontWeight = '400';
-          textarea.style.borderColor = '#e5e7eb';
-          textarea.style.boxShadow = 'none';
-        }
+      if (state.wordCount >= this.limit) {
+        this.counter.style.color = '#dc2626';
+        this.counter.style.fontWeight = '700';
+        this.textarea.style.borderColor = '#dc2626';
+        this.textarea.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
+      } else if (state.wordCount >= this.limit * 0.9) {
+        this.counter.style.color = '#f59e0b';
+        this.counter.style.fontWeight = '600';
+        this.textarea.style.borderColor = '#f59e0b';
+        this.textarea.style.boxShadow = 'none';
+      } else {
+        this.counter.style.color = '#6b7280';
+        this.counter.style.fontWeight = '400';
+        this.textarea.style.borderColor = '#e5e7eb';
+        this.textarea.style.boxShadow = 'none';
       }
-      return wordCount;
     }
     
-    // SMART KEYDOWN HANDLER
-    textarea.addEventListener('keydown', function(e) {
-      const currentValue = textarea.value;
-      const wordCount = countWords(currentValue);
-      const key = e.key;
-      const keyCode = e.keyCode || e.which;
+    this.lastValue = state.value;
+    this.lastWordCount = state.wordCount;
+    return state.wordCount;
+  }
+  
+  truncateToLimit(text) {
+    const words = text.trim().split(/\s+/);
+    if (words.length <= this.limit) return text;
+    
+    let result = '';
+    let charIndex = 0;
+    let wordCount = 0;
+    const regex = /\S+/g;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null && wordCount < this.limit) {
+      const word = match[0];
+      const wordStart = match.index;
+      const wordEnd = wordStart + word.length;
       
-      textareaStates[config.id].lastKey = key;
+      if (wordCount === 0) {
+        result = text.substring(0, wordEnd);
+      } else {
+        const whitespace = text.substring(charIndex, wordStart);
+        result += whitespace + word;
+      }
       
-      const alwaysAllowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 
-        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-        'Home', 'End', 'PageUp', 'PageDown',
-        'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'NumLock'];
-      const alwaysAllowedKeyCodes = [8, 46, 9, 13, 27, 37, 38, 39, 40, 36, 35, 33, 34, 16, 17, 18, 91, 93, 20, 144];
+      charIndex = wordEnd;
+      wordCount++;
+    }
+    
+    return result;
+  }
+  
+  setupEvents() {
+    // INPUT EVENT
+    this.textarea.addEventListener('input', (e) => {
+      const state = this.getCurrentState();
       
-      if (e.ctrlKey || e.metaKey || e.altKey) return true;
-      if (keyCode >= 112 && keyCode <= 123) return true;
-      if (alwaysAllowedKeys.includes(key) || alwaysAllowedKeyCodes.includes(keyCode)) return true;
-      
-      if (wordCount >= limit) {
-        const selectionStart = textarea.selectionStart;
-        const selectionEnd = textarea.selectionEnd;
-        const hasSelection = selectionStart !== selectionEnd;
+      if (state.wordCount > this.limit) {
+        console.log(`✂️ ${this.name}: Truncating from ${state.wordCount} to ${this.limit} words`);
+        this.textarea.value = this.truncateToLimit(state.value);
         
-        if (hasSelection) {
-          const beforeSelection = currentValue.substring(0, selectionStart);
-          const afterSelection = currentValue.substring(selectionEnd);
-          const newText = beforeSelection + key + afterSelection;
+        setTimeout(() => {
+          const newLength = this.textarea.value.length;
+          const newPos = Math.min(state.cursorPos, newLength);
+          this.textarea.setSelectionRange(newPos, newPos);
+        }, 0);
+      }
+      
+      this.updateCounter();
+    });
+    
+    // KEYDOWN EVENT
+    this.textarea.addEventListener('keydown', (e) => {
+      const state = this.getCurrentState();
+      
+      if (state.wordCount >= this.limit) {
+        const key = e.key;
+        const keyCode = e.keyCode || e.which;
+        
+        const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape',
+          'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+          'Home', 'End', 'PageUp', 'PageDown', 'Shift', 'Control', 'Alt', 'Meta'];
+        
+        const allowedKeyCodes = [8, 46, 9, 13, 27, 37, 38, 39, 40, 36, 35, 33, 34, 16, 17, 18, 91];
+        
+        if (e.ctrlKey || e.metaKey || e.altKey) return true;
+        if (keyCode >= 112 && keyCode <= 123) return true;
+        if (allowedKeys.includes(key) || allowedKeyCodes.includes(keyCode)) return true;
+        
+        if (state.hasSelection) {
+          const before = state.value.substring(0, state.cursorPos);
+          const after = state.value.substring(state.selectionEnd);
+          const newText = before + key + after;
+          const newWordCount = this.countWords(newText);
           
-          if (countWords(newText) > limit) {
-            console.log(`🚫 ${config.name}: Blocked replacement (would exceed limit)`);
-            e.preventDefault();
-            return false;
-          }
-          return true;
+          if (newWordCount <= this.limit) return true;
         }
         
-        console.log(`🚫 ${config.name}: Blocked "${key}" (at limit)`);
+        console.log(`🚫 ${this.name}: Blocked "${key}" (at ${state.wordCount}/${this.limit} words)`);
         e.preventDefault();
         return false;
       }
+      
       return true;
     });
     
-    // KEYUP HANDLER - UPDATE AFTER KEY RELEASE
-    textarea.addEventListener('keyup', function(e) {
-      updateCounter();
-    });
-    
-    // PASTE HANDLER
-    textarea.addEventListener('paste', function(e) {
+    // PASTE EVENT
+    this.textarea.addEventListener('paste', (e) => {
       e.preventDefault();
       
       const pastedText = e.clipboardData.getData('text');
       if (!pastedText.trim()) return;
       
-      const currentText = textarea.value;
-      const selectionStart = textarea.selectionStart;
-      const selectionEnd = textarea.selectionEnd;
-      const hasSelection = selectionStart !== selectionEnd;
+      const state = this.getCurrentState();
+      
+      let baseText;
+      if (state.hasSelection) {
+        baseText = state.value.substring(0, state.cursorPos) + state.value.substring(state.selectionEnd);
+      } else {
+        baseText = state.value;
+      }
+      
+      const baseWordCount = this.countWords(baseText);
+      const availableWords = this.limit - baseWordCount;
+      
+      if (availableWords <= 0) {
+        console.log(`🚫 ${this.name}: No space for paste`);
+        return;
+      }
       
       let newText;
-      if (hasSelection) {
-        newText = currentText.substring(0, selectionStart) + pastedText + currentText.substring(selectionEnd);
+      if (state.hasSelection) {
+        newText = state.value.substring(0, state.cursorPos) + pastedText + state.value.substring(state.selectionEnd);
       } else {
-        newText = currentText.substring(0, selectionStart) + pastedText + currentText.substring(selectionStart);
+        newText = state.value.substring(0, state.cursorPos) + pastedText + state.value.substring(state.cursorPos);
       }
       
-      const newWordCount = countWords(newText);
+      const newWordCount = this.countWords(newText);
       
-      if (newWordCount <= limit) {
-        textarea.value = newText;
-        textarea.selectionStart = textarea.selectionEnd = selectionStart + pastedText.length;
-        updateCounter();
-        console.log(`✅ ${config.name}: Pasted ${countWords(pastedText)} words (total: ${newWordCount}/${limit})`);
+      if (newWordCount <= this.limit) {
+        this.textarea.value = newText;
+        console.log(`✅ ${this.name}: Pasted ${this.countWords(pastedText)} words`);
       } else {
-        const wordsBeforeSelection = hasSelection ? 
-          countWords(currentText.substring(0, selectionStart) + currentText.substring(selectionEnd)) :
-          countWords(currentText);
-        const wordsAvailable = limit - wordsBeforeSelection;
-        
-        if (wordsAvailable <= 0) {
-          console.log(`🚫 ${config.name}: No space for paste`);
-          return;
-        }
+        console.log(`✂️ ${this.name}: Partial paste (${availableWords} words available)`);
         
         const pastedWords = pastedText.trim().split(/\s+/).filter(w => w.length > 0);
-        const allowedWords = pastedWords.slice(0, wordsAvailable);
+        const allowedWords = pastedWords.slice(0, availableWords);
         const truncatedPaste = allowedWords.join(' ');
         
-        if (hasSelection) {
-          textarea.value = currentText.substring(0, selectionStart) + truncatedPaste + currentText.substring(selectionEnd);
+        if (state.hasSelection) {
+          this.textarea.value = state.value.substring(0, state.cursorPos) + truncatedPaste + state.value.substring(state.selectionEnd);
         } else {
-          textarea.value = currentText.substring(0, selectionStart) + truncatedPaste + currentText.substring(selectionStart);
+          this.textarea.value = state.value.substring(0, state.cursorPos) + truncatedPaste + state.value.substring(state.cursorPos);
         }
-        
-        textarea.selectionStart = textarea.selectionEnd = selectionStart + truncatedPaste.length;
-        updateCounter();
-        console.log(`✂️ ${config.name}: Partial paste (${wordsAvailable}/${pastedWords.length} words)`);
       }
-    });
-    
-    // INPUT HANDLER - SAFETY NET
-    textarea.addEventListener('input', function() {
-      const wordCount = countWords(textarea.value);
       
-      if (wordCount > limit) {
-        console.warn(`⚠️ ${config.name}: SAFETY TRIGGERED - ${wordCount} words, truncating...`);
-        const words = textarea.value.trim().split(/\s+/);
-        if (words.length > limit) {
-          textarea.value = words.slice(0, limit).join(' ');
-        }
-        updateCounter();
-      }
-    });
-    
-    // BLUR HANDLER
-    textarea.addEventListener('blur', function() {
-      const wordCount = countWords(textarea.value);
-      if (wordCount > limit) {
-        const words = textarea.value.trim().split(/\s+/);
-        if (words.length > limit) {
-          textarea.value = words.slice(0, limit).join(' ');
-          updateCounter();
-        }
-      }
-    });
-    
-    // CLEANUP
-    textarea.removeAttribute('oninput');
-    textarea.removeAttribute('onkeydown');
-    textarea.removeAttribute('onpaste');
-    textarea.removeAttribute('onkeyup');
-    textarea.removeAttribute('onkeypress');
-    
-    updateCounter();
-    console.log(`✅ ${config.name} ULTIMATE word limit ready`);
-  });
-  
-  console.log('🎉 ALL ULTIMATE word limit systems ready!');
-  
-  // WATCHDOG - checks every 500ms
-  setInterval(function() {
-    textareasConfig.forEach(config => {
-      const textarea = document.getElementById(config.id);
-      if (!textarea) return;
+      this.updateCounter();
       
-      const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
-      if (wordCount > config.limit) {
-        console.error(`🚨 EMERGENCY: ${config.name} had ${wordCount} words! Force truncating...`);
-        const words = textarea.value.trim().split(/\s+/);
-        if (words.length > config.limit) {
-          textarea.value = words.slice(0, config.limit).join(' ');
-          const counter = document.getElementById(config.counterId);
-          if (counter) {
-            counter.textContent = config.limit.toLocaleString();
-            counter.style.color = '#dc2626';
-          }
-        }
+      setTimeout(() => {
+        this.textarea.focus();
+      }, 0);
+    });
+    
+    // BLUR EVENT
+    this.textarea.addEventListener('blur', () => {
+      const state = this.getCurrentState();
+      if (state.wordCount > this.limit) {
+        this.textarea.value = this.truncateToLimit(state.value);
+        this.updateCounter();
       }
     });
-  }, 500);
+  }
   
+  setValue(text) {
+    const truncated = this.truncateToLimit(text);
+    this.textarea.value = truncated;
+    this.updateCounter();
+    return truncated;
+  }
+  
+  getValue() { return this.textarea.value; }
+  getWordCount() { return this.countWords(this.textarea.value); }
+}
+
+// MAIN INITIALIZATION
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Ultimate Word Limit Enforcer initializing...');
+  
+  const enforcers = [
+    new WordLimitEnforcer({ id: 'essayInput', limit: 1500, counterId: 'charCount', name: 'Free Scan' }),
+    new WordLimitEnforcer({ id: 'proScanInput', limit: 1500, counterId: 'proScanCharCount', name: 'Pro Scan' }),
+    new WordLimitEnforcer({ id: 'quickfixEssayInput', limit: 1500, counterId: 'quickfixFlowCharCount', name: 'QuickFix' })
+  ].filter(e => e.textarea);
+  
+  console.log(`✅ ${enforcers.length} textareas initialized`);
+  
+  // Make enforcers globally accessible
+  window.wordLimitEnforcers = enforcers;
+  
+  // Debug function
   window.debugWordLimits = function() {
-    console.log('🔍 DEBUG WORD LIMITS:');
-    textareasConfig.forEach(config => {
-      const textarea = document.getElementById(config.id);
-      if (textarea) {
-        const wordCount = textarea.value.trim().split(/\s+/).filter(w => w.length > 0).length;
-        console.log(`  ${config.name} (${config.id}): ${wordCount}/${config.limit} words`);
-      } else {
-        console.log(`  ${config.name}: NOT FOUND`);
+    console.log('🔍 WORD LIMIT DEBUG:');
+    enforcers.forEach(enforcer => {
+      const count = enforcer.getWordCount();
+      const atLimit = count >= enforcer.limit;
+      console.log(`  ${enforcer.name}: ${count}/${enforcer.limit} words ${atLimit ? '🚫' : '✅'}`);
+    });
+  };
+  
+  window.forceTruncateAll = function() {
+    enforcers.forEach(enforcer => {
+      const current = enforcer.getValue();
+      const truncated = enforcer.truncateToLimit(current);
+      if (current !== truncated) {
+        enforcer.setValue(truncated);
+        console.log(`✂️ ${enforcer.name}: Force truncated`);
       }
     });
   };
   
+  // Safety watchdog - every 500ms
+  setInterval(() => {
+    enforcers.forEach(enforcer => {
+      if (enforcer.getWordCount() > enforcer.limit) {
+        console.error(`🚨 EMERGENCY: ${enforcer.name} over limit! Force truncating...`);
+        enforcer.setValue(enforcer.getValue());
+      }
+    });
+  }, 500);
+  
+  console.log('🎉 ALL word limit systems ready!');
   console.log('💡 Tip: Run debugWordLimits() in console to check all textareas');
 });
 </script>

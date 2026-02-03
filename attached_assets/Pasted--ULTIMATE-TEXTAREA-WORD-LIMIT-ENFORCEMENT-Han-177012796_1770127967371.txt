@@ -1,0 +1,398 @@
+// ============================================
+// ULTIMATE TEXTAREA WORD LIMIT ENFORCEMENT
+// Handles: Typing, Pasting, Editing, Uploads
+// ============================================
+
+class WordLimitEnforcer {
+  constructor(config) {
+    this.textarea = document.getElementById(config.id);
+    this.counter = document.getElementById(config.counterId);
+    this.limit = config.limit;
+    this.name = config.name;
+    
+    if (!this.textarea) return;
+    
+    this.init();
+  }
+  
+  init() {
+    console.log(`🔒 Initializing ${this.name} (${this.limit} words)`);
+    
+    // Remove any inline handlers
+    this.textarea.removeAttribute('oninput');
+    this.textarea.removeAttribute('onkeydown');
+    this.textarea.removeAttribute('onpaste');
+    this.textarea.removeAttribute('onkeyup');
+    
+    // Store original value for comparison
+    this.lastValue = this.textarea.value;
+    this.lastWordCount = this.countWords(this.textarea.value);
+    
+    // Set up event listeners
+    this.setupEvents();
+    
+    // Initial update
+    this.updateCounter();
+    
+    console.log(`✅ ${this.name} ready`);
+  }
+  
+  countWords(text) {
+    if (!text || !text.trim()) return 0;
+    return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  }
+  
+  getCurrentState() {
+    return {
+      value: this.textarea.value,
+      wordCount: this.countWords(this.textarea.value),
+      cursorPos: this.textarea.selectionStart,
+      selectionEnd: this.textarea.selectionEnd,
+      hasSelection: this.textarea.selectionStart !== this.textarea.selectionEnd
+    };
+  }
+  
+  updateCounter() {
+    const state = this.getCurrentState();
+    
+    // Update counter display
+    if (this.counter) {
+      this.counter.textContent = state.wordCount.toLocaleString();
+      
+      // Visual feedback
+      if (state.wordCount >= this.limit) {
+        this.counter.style.color = '#dc2626';
+        this.counter.style.fontWeight = '700';
+        this.textarea.style.borderColor = '#dc2626';
+        this.textarea.style.boxShadow = '0 0 0 2px rgba(220, 38, 38, 0.2)';
+      } else if (state.wordCount >= this.limit * 0.9) {
+        this.counter.style.color = '#f59e0b';
+        this.counter.style.fontWeight = '600';
+        this.textarea.style.borderColor = '#f59e0b';
+        this.textarea.style.boxShadow = 'none';
+      } else {
+        this.counter.style.color = '#6b7280';
+        this.counter.style.fontWeight = '400';
+        this.textarea.style.borderColor = '#e5e7eb';
+        this.textarea.style.boxShadow = 'none';
+      }
+    }
+    
+    this.lastValue = state.value;
+    this.lastWordCount = state.wordCount;
+    
+    return state.wordCount;
+  }
+  
+  truncateToLimit(text) {
+    const words = text.trim().split(/\s+/);
+    if (words.length <= this.limit) return text;
+    
+    // Keep only the first 'limit' words
+    let result = '';
+    let charIndex = 0;
+    let wordCount = 0;
+    const regex = /\S+/g;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null && wordCount < this.limit) {
+      const word = match[0];
+      const wordStart = match.index;
+      const wordEnd = wordStart + word.length;
+      
+      if (wordCount === 0) {
+        result = text.substring(0, wordEnd);
+      } else {
+        const whitespace = text.substring(charIndex, wordStart);
+        result += whitespace + word;
+      }
+      
+      charIndex = wordEnd;
+      wordCount++;
+    }
+    
+    return result;
+  }
+  
+  setupEvents() {
+    // 1. INPUT EVENT - Main handler for all changes
+    this.textarea.addEventListener('input', (e) => {
+      const state = this.getCurrentState();
+      
+      // If over limit, truncate
+      if (state.wordCount > this.limit) {
+        console.log(`✂️ ${this.name}: Truncating from ${state.wordCount} to ${this.limit} words`);
+        this.textarea.value = this.truncateToLimit(state.value);
+        
+        // Try to preserve cursor position
+        setTimeout(() => {
+          const newLength = this.textarea.value.length;
+          const newPos = Math.min(state.cursorPos, newLength);
+          this.textarea.setSelectionRange(newPos, newPos);
+        }, 0);
+      }
+      
+      this.updateCounter();
+    });
+    
+    // 2. KEYDOWN EVENT - Prevent adding characters when at limit
+    this.textarea.addEventListener('keydown', (e) => {
+      const state = this.getCurrentState();
+      
+      // If at or over limit, check what key is being pressed
+      if (state.wordCount >= this.limit) {
+        const key = e.key;
+        const keyCode = e.keyCode || e.which;
+        
+        // ALWAYS ALLOW: Deletion, navigation, shortcuts
+        const allowedKeys = [
+          'Backspace', 'Delete', 'Tab', 'Enter', 'Escape',
+          'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+          'Home', 'End', 'PageUp', 'PageDown',
+          'Shift', 'Control', 'Alt', 'Meta'
+        ];
+        
+        const allowedKeyCodes = [8, 46, 9, 13, 27, 37, 38, 39, 40, 36, 35, 33, 34, 16, 17, 18, 91];
+        
+        // Allow all control combinations (Ctrl+A, Ctrl+C, etc.)
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+          return true;
+        }
+        
+        // Allow function keys
+        if (keyCode >= 112 && keyCode <= 123) {
+          return true;
+        }
+        
+        // Check if key is allowed
+        if (allowedKeys.includes(key) || allowedKeyCodes.includes(keyCode)) {
+          return true;
+        }
+        
+        // SPECIAL CASE: If user has text selected, they might be replacing it
+        if (state.hasSelection) {
+          // Calculate what the new text would be if they replace selection
+          const before = state.value.substring(0, state.cursorPos);
+          const after = state.value.substring(state.selectionEnd);
+          const newText = before + key + after;
+          const newWordCount = this.countWords(newText);
+          
+          // If replacing stays within limit, allow it
+          if (newWordCount <= this.limit) {
+            return true;
+          }
+        }
+        
+        // Block the key
+        console.log(`🚫 ${this.name}: Blocked "${key}" (at ${state.wordCount}/${this.limit} words)`);
+        e.preventDefault();
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // 3. PASTE EVENT - Handle pasting with limits
+    this.textarea.addEventListener('paste', (e) => {
+      e.preventDefault();
+      
+      const pastedText = e.clipboardData.getData('text');
+      if (!pastedText.trim()) return;
+      
+      const state = this.getCurrentState();
+      const availableWords = this.limit - state.wordCount;
+      
+      if (availableWords <= 0) {
+        console.log(`🚫 ${this.name}: No space for paste`);
+        return;
+      }
+      
+      // Calculate new text
+      let newText;
+      if (state.hasSelection) {
+        // Replace selection
+        const before = state.value.substring(0, state.cursorPos);
+        const after = state.value.substring(state.selectionEnd);
+        newText = before + pastedText + after;
+      } else {
+        // Insert at cursor
+        const before = state.value.substring(0, state.cursorPos);
+        const after = state.value.substring(state.cursorPos);
+        newText = before + pastedText + after;
+      }
+      
+      // Check if it fits
+      const newWordCount = this.countWords(newText);
+      
+      if (newWordCount <= this.limit) {
+        // Full paste works
+        this.textarea.value = newText;
+        console.log(`✅ ${this.name}: Pasted ${this.countWords(pastedText)} words`);
+      } else {
+        // Need to truncate paste
+        console.log(`✂️ ${this.name}: Partial paste (${availableWords} words available)`);
+        
+        // Find how much of pasted text we can use
+        let allowedChars = 0;
+        let wordCount = 0;
+        const regex = /\S+/g;
+        let match;
+        
+        while ((match = regex.exec(pastedText)) !== null && wordCount < availableWords) {
+          allowedChars = match.index + match[0].length;
+          wordCount++;
+        }
+        
+        const truncatedPaste = pastedText.substring(0, allowedChars);
+        
+        if (state.hasSelection) {
+          this.textarea.value = state.value.substring(0, state.cursorPos) + 
+                               truncatedPaste + 
+                               state.value.substring(state.selectionEnd);
+        } else {
+          this.textarea.value = state.value.substring(0, state.cursorPos) + 
+                               truncatedPaste + 
+                               state.value.substring(state.cursorPos);
+        }
+      }
+      
+      this.updateCounter();
+      
+      // Focus and position cursor
+      setTimeout(() => {
+        this.textarea.focus();
+        const newPos = state.cursorPos + pastedText.length;
+        this.textarea.setSelectionRange(newPos, newPos);
+      }, 0);
+    });
+    
+    // 4. BLUR EVENT - Final safety check
+    this.textarea.addEventListener('blur', () => {
+      const state = this.getCurrentState();
+      if (state.wordCount > this.limit) {
+        this.textarea.value = this.truncateToLimit(state.value);
+        this.updateCounter();
+      }
+    });
+  }
+  
+  // Public method to set value (for uploads)
+  setValue(text) {
+    const truncated = this.truncateToLimit(text);
+    this.textarea.value = truncated;
+    this.updateCounter();
+    return truncated;
+  }
+  
+  // Public method to get value
+  getValue() {
+    return this.textarea.value;
+  }
+  
+  // Public method to get word count
+  getWordCount() {
+    return this.countWords(this.textarea.value);
+  }
+}
+
+// ============================================
+// MAIN INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🚀 Ultimate Word Limit Enforcer initializing...');
+  
+  // Initialize all textareas
+  const enforcers = [
+    new WordLimitEnforcer({
+      id: 'essayInput',
+      limit: 500,
+      counterId: 'charCount',
+      name: 'Free Scan'
+    }),
+    new WordLimitEnforcer({
+      id: 'proScanInput',
+      limit: 1500,
+      counterId: 'proScanCharCount',
+      name: 'Pro Scan'
+    }),
+    new WordLimitEnforcer({
+      id: 'quickfixEssayInput',
+      limit: 1500,
+      counterId: 'quickfixFlowCharCount',
+      name: 'QuickFix'
+    })
+  ].filter(e => e.textarea); // Filter out any that weren't found
+  
+  console.log(`✅ ${enforcers.length} textareas initialized`);
+  
+  // ============================================
+  // UPLOAD HANDLER INTEGRATION
+  // ============================================
+  
+  // Override your upload handler to use the enforcer
+  const originalUploadHandler = window.handleFileUpload; // Assuming you have this
+  
+  if (typeof originalUploadHandler === 'function') {
+    window.handleFileUpload = function(file, textareaId) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const text = e.target.result;
+          const enforcer = enforcers.find(e => e.textarea.id === textareaId);
+          
+          if (enforcer) {
+            const truncated = enforcer.setValue(text);
+            console.log(`📁 Upload to ${textareaId}: ${enforcer.getWordCount()}/${enforcer.limit} words`);
+            resolve(truncated);
+          } else {
+            // Fallback to original handler
+            originalUploadHandler(file, textareaId);
+            resolve(text);
+          }
+        };
+        reader.readAsText(file);
+      });
+    };
+    
+    console.log('✅ Upload handler integrated with word limits');
+  }
+  
+  // ============================================
+  // DEBUG AND UTILITY FUNCTIONS
+  // ============================================
+  
+  window.debugWordLimits = function() {
+    console.log('🔍 WORD LIMIT DEBUG:');
+    enforcers.forEach(enforcer => {
+      const count = enforcer.getWordCount();
+      const atLimit = count >= enforcer.limit;
+      console.log(`  ${enforcer.name}: ${count}/${enforcer.limit} words ${atLimit ? '🚫' : '✅'}`);
+    });
+  };
+  
+  window.forceTruncateAll = function() {
+    enforcers.forEach(enforcer => {
+      const current = enforcer.getValue();
+      const truncated = enforcer.truncateToLimit(current);
+      if (current !== truncated) {
+        enforcer.setValue(truncated);
+        console.log(`✂️ ${enforcer.name}: Force truncated`);
+      }
+    });
+  };
+  
+  // Safety watchdog
+  setInterval(() => {
+    enforcers.forEach(enforcer => {
+      const count = enforcer.getWordCount();
+      if (count > enforcer.limit) {
+        console.warn(`⚠️ Safety check: ${enforcer.name} had ${count} words, truncating...`);
+        enforcer.setValue(enforcer.getValue());
+      }
+    });
+  }, 1000);
+  
+  console.log('🎉 Ultimate Word Limit Enforcer ready!');
+  console.log('💡 Commands: debugWordLimits(), forceTruncateAll()');
+});
