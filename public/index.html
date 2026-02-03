@@ -62012,10 +62012,13 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<!-- Chat Toggle Button -->
-<button id="chatToggleBtn" onclick="window.proChatSupport.toggleChat()" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: linear-gradient(135deg, #00a8e8, #0b0646); color: white; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 28px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,168,232,0.3); transition: transform 0.2s;">
-  💬
-</button>
+<!-- Chat Toggle Button with Label -->
+<div id="chatToggleContainer" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 9999; text-align: center;">
+  <div class="chat-label" style="color: white; font-weight: 600; font-size: 14px; margin-bottom: 8px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">❓ Need Help? <span class="ask-ai" style="color: #4fc3f7; font-weight: 700; text-decoration: underline;">Ask AI</span></div>
+  <button id="chatToggleBtn" onclick="window.proChatSupport.toggleChat()" style="background: linear-gradient(135deg, #00a8e8, #0b0646); color: white; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 28px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,168,232,0.3); transition: transform 0.2s;">
+    💬
+  </button>
+</div>
 
 <script>
 // ============================================
@@ -62079,13 +62082,13 @@ class ProChatSupport {
   }
   
   showToggleButton() {
-    const btn = document.getElementById('chatToggleBtn');
-    if (btn) btn.style.display = 'flex';
+    const container = document.getElementById('chatToggleContainer');
+    if (container) container.style.display = 'block';
   }
   
   hideToggleButton() {
-    const btn = document.getElementById('chatToggleBtn');
-    if (btn) btn.style.display = 'none';
+    const container = document.getElementById('chatToggleContainer');
+    if (container) container.style.display = 'none';
   }
   
   addWelcomeMessage() {
@@ -62124,7 +62127,8 @@ class ProChatSupport {
     
     if (widget) {
       widget.style.display = 'block';
-      if (btn) btn.style.display = 'none';
+      const container = document.getElementById('chatToggleContainer');
+      if (container) container.style.display = 'none';
       this.isOpen = true;
       
       // Clear and add support-specific greeting
@@ -62194,13 +62198,14 @@ class ProChatSupport {
     const widget = document.getElementById('proChatWidget');
     const btn = document.getElementById('chatToggleBtn');
     
+    const container = document.getElementById('chatToggleContainer');
     if (this.isOpen) {
       widget.style.display = 'block';
-      btn.style.display = 'none';
+      if (container) container.style.display = 'none';
       document.getElementById('chatInput').focus();
     } else {
       widget.style.display = 'none';
-      btn.style.display = 'flex';
+      if (container) container.style.display = 'block';
     }
   }
   
