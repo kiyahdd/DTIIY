@@ -211,7 +211,7 @@ This document contains all the code sections that render the Free Clean No Sus p
     <span id="freeUpsellHeadingText">🚀 Go Pro and chill...</span>
   </h3>
   <p id="freeUpsellText" style="color: #fff; font-size: 13px; margin: 0 0 12px 0; line-height: 1.5;">
-    500 monthly scans • Catch ALL triggers before your prof does • 5,000 character limit
+    100 monthly scans • Catch ALL triggers before your prof does • 1,500 word limit
   </p>
   <button onclick="handleProUpgrade()" style="background: white; color: #00a8e8; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; width: 100%;">
     → Get Pro - $9.99/mo
