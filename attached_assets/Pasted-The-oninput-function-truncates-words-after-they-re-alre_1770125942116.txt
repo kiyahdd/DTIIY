@@ -1,0 +1,184 @@
+The oninput function truncates words after they're already pasted, but the user sees the full text briefly before it gets cut. Also, it doesn't prevent typing beyond the limit in real-time.
+
+The Fix
+Update your textarea with this improved oninput handler that prevents exceeding the limit more effectively:
+
+html
+<textarea 
+  id="quickfixEssayInput" 
+  placeholder="Paste your essay here (up to 1,500 words)..." 
+  oninput="(function(el){ 
+    var value = el.value; 
+    var words = value.trim().split(/\s+/).filter(function(w){ return w.length > 0 }); 
+    
+    if(words.length > 1500) { 
+      // Find the position of the 1500th word
+      var wordPositions = [];
+      var regex = /\S+/g;
+      var match;
+      var count = 0;
+      
+      while ((match = regex.exec(value)) !== null && count < 1500) {
+        wordPositions.push(match.index);
+        count++;
+      }
+      
+      // If we found the 1500th word position
+      if (wordPositions.length >= 1500) {
+        el.value = value.substring(0, wordPositions[1499] + value.substring(wordPositions[1499]).match(/\S+/)[0].length);
+        words = el.value.trim().split(/\s+/).filter(function(w){ return w.length > 0 });
+      }
+    } 
+    
+    var countEl = document.getElementById('quickfixFlowCharCount'); 
+    if(countEl) countEl.textContent = words.length.toLocaleString(); 
+  })(this)"
+  
+  onkeydown="(function(el, e) {
+    // Get current words
+    var value = el.value;
+    var words = value.trim().split(/\s+/).filter(function(w){ return w.length > 0 });
+    
+    // If we're already at 1500 words, prevent adding more characters
+    // unless it's a backspace, delete, or arrow key
+    if (words.length >= 1500) {
+      var key = e.keyCode || e.which;
+      // Allow: backspace, delete, tab, escape, enter, arrow keys, home, end
+      if ([8, 9, 13, 27, 37, 38, 39, 40, 46, 36, 35].indexOf(key) !== -1) {
+        return true;
+      }
+      
+      // Allow shortcuts like Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+      if (e.ctrlKey || e.metaKey) {
+        return true;
+      }
+      
+      // Prevent adding more text
+      e.preventDefault();
+      return false;
+    }
+  })(this, event)"
+  
+  style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;">
+</textarea>
+Even Better Solution: Move the Logic to JavaScript
+Instead of inline handlers, use JavaScript for better control:
+
+Replace your textarea with this simpler version:
+
+html
+<textarea 
+  id="quickfixEssayInput" 
+  placeholder="Paste your essay here (up to 1,500 words)..." 
+  style="width:100%; height:200px; padding:15px; border:2px solid #e5e7eb; border-radius:10px; font-size:16px; font-family:inherit; resize:vertical; margin-bottom:15px; white-space: pre-wrap;">
+</textarea>
+Add this JavaScript after your textarea:
+
+javascript
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const essayInput = document.getElementById('quickfixEssayInput');
+    const charCount = document.getElementById('quickfixFlowCharCount');
+    
+    if (essayInput) {
+      // Prevent paste overflow
+      essayInput.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedText = e.clipboardData.getData('text');
+        const currentText = essayInput.value;
+        
+        // Combine and count words
+        const combinedText = currentText + pastedText;
+        const words = combinedText.trim().split(/\s+/).filter(w => w.length > 0);
+        
+        if (words.length <= 1500) {
+          // If under limit, allow full paste
+          essayInput.value = combinedText;
+        } else {
+          // If over limit, paste only up to 1500 words
+          const currentWords = currentText.trim().split(/\s+/).filter(w => w.length > 0);
+          const wordsToAdd = 1500 - currentWords.length;
+          
+          if (wordsToAdd > 0) {
+            const pastedWords = pastedText.trim().split(/\s+/).filter(w => w.length > 0);
+            const allowedWords = pastedWords.slice(0, wordsToAdd);
+            essayInput.value = currentText + (currentText ? ' ' : '') + allowedWords.join(' ');
+          }
+        }
+        
+        updateWordCount();
+      });
+      
+      // Handle typing/input
+      essayInput.addEventListener('input', function() {
+        const value = essayInput.value;
+        const words = value.trim().split(/\s+/).filter(w => w.length > 0);
+        
+        if (words.length > 1500) {
+          // Find the position of the 1500th word
+          const regex = /\S+/g;
+          const wordPositions = [];
+          let match;
+          let count = 0;
+          
+          while ((match = regex.exec(value)) !== null && count < 1500) {
+            wordPositions.push(match.index);
+            count++;
+          }
+          
+          if (wordPositions.length >= 1500) {
+            const truncatedText = value.substring(0, 
+              wordPositions[1499] + value.substring(wordPositions[1499]).match(/\S+/)[0].length
+            );
+            essayInput.value = truncatedText;
+          }
+        }
+        
+        updateWordCount();
+      });
+      
+      // Prevent typing beyond limit
+      essayInput.addEventListener('keydown', function(e) {
+        const value = essayInput.value;
+        const words = value.trim().split(/\s+/).filter(w => w.length > 0);
+        
+        if (words.length >= 1500) {
+          const key = e.keyCode || e.which;
+          // Allow navigation and control keys
+          const allowedKeys = [8, 9, 13, 27, 37, 38, 39, 40, 46, 36, 35]; // backspace, tab, enter, etc.
+          
+          if (allowedKeys.indexOf(key) !== -1) {
+            return true;
+          }
+          
+          if (e.ctrlKey || e.metaKey) {
+            return true;
+          }
+          
+          // Prevent adding more characters
+          e.preventDefault();
+          return false;
+        }
+      });
+      
+      function updateWordCount() {
+        const value = essayInput.value;
+        const words = value.trim().split(/\s+/).filter(w => w.length > 0);
+        if (charCount) {
+          charCount.textContent = words.length.toLocaleString();
+        }
+      }
+      
+      // Initialize count
+      updateWordCount();
+    }
+  });
+</script>
+Why This Works Better:
+Prevents paste overflow - Intercepts paste events and only allows what fits within 1500 words
+
+Blocks typing beyond limit - Uses keydown to prevent adding characters when at 1500 words
+
+Better truncation - More accurately finds where to truncate when pasting
+
+Real-time feedback - Updates word count immediately

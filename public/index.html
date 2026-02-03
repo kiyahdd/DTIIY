@@ -61638,41 +61638,108 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  var nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-  
-  function truncateWords(text, limit) {
-    var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-    if (words.length <= limit) return null; // No truncation needed
-    return words.slice(0, limit).join(' ');
-  }
-  
-  function enforceLimit(ta) {
-    if (!ta || !ta.value) return;
-    var truncated = truncateWords(ta.value, 1500);
-    if (truncated !== null) {
-      nativeSetter.call(ta, truncated);
-      console.log('ENFORCED: Cut to 1500 words');
+  // Apply word limit to all essay textareas
+  ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+    
+    // Determine which counter to update
+    const counterId = textareaId === 'quickfixEssayInput' ? 'quickfixFlowCharCount' : 'charCount';
+    const counterEl = document.getElementById(counterId);
+    
+    function getWords(text) {
+      return text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
     }
-  }
-  
-  // Add listeners to all textareas
-  ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
-    var ta = document.getElementById(id);
-    if (!ta) return;
     
-    ta.addEventListener('input', function() {
-      enforceLimit(ta);
+    function updateWordCount() {
+      const words = getWords(textarea.value);
+      if (counterEl) {
+        counterEl.textContent = words.length.toLocaleString();
+      }
+    }
+    
+    // Prevent paste overflow
+    textarea.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const pastedText = e.clipboardData.getData('text');
+      const currentText = textarea.value;
+      
+      // Combine and count words
+      const combinedText = currentText + pastedText;
+      const words = getWords(combinedText);
+      
+      if (words.length <= 1500) {
+        textarea.value = combinedText;
+      } else {
+        // Paste only up to 1500 words total
+        const allWords = getWords(currentText + ' ' + pastedText);
+        textarea.value = allWords.slice(0, 1500).join(' ');
+        console.log('TRUNCATED: Pasted text cut to 1500 words');
+      }
+      
+      updateWordCount();
+      
+      // Trigger input event for other listeners
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
     
-    ta.addEventListener('paste', function() {
-      setTimeout(function() { enforceLimit(ta); }, 0);
-      setTimeout(function() { enforceLimit(ta); }, 100);
+    // Handle typing/input - truncate if over limit
+    textarea.addEventListener('input', function() {
+      const words = getWords(textarea.value);
+      
+      if (words.length > 1500) {
+        // Find position of 1500th word and truncate
+        const value = textarea.value;
+        const regex = /\S+/g;
+        const wordPositions = [];
+        let match;
+        let count = 0;
+        
+        while ((match = regex.exec(value)) !== null && count < 1500) {
+          wordPositions.push({ start: match.index, end: match.index + match[0].length });
+          count++;
+        }
+        
+        if (wordPositions.length >= 1500) {
+          textarea.value = value.substring(0, wordPositions[1499].end);
+          console.log('TRUNCATED: Input cut to 1500 words');
+        }
+      }
+      
+      updateWordCount();
     });
+    
+    // Prevent typing beyond limit
+    textarea.addEventListener('keydown', function(e) {
+      const words = getWords(textarea.value);
+      
+      if (words.length >= 1500) {
+        const key = e.keyCode || e.which;
+        // Allow: backspace, delete, tab, escape, enter, arrows, home, end
+        const allowedKeys = [8, 9, 13, 27, 37, 38, 39, 40, 46, 36, 35];
+        
+        if (allowedKeys.indexOf(key) !== -1) {
+          return true;
+        }
+        
+        // Allow Ctrl/Cmd shortcuts
+        if (e.ctrlKey || e.metaKey) {
+          return true;
+        }
+        
+        // Prevent adding more characters
+        e.preventDefault();
+        return false;
+      }
+    });
+    
+    console.log('Word limiter attached to: ' + textareaId);
   });
   
-  console.log('Simple word limiter active');
+  console.log('Word limit enforcement ready (1500 words max)');
 });
 </script>
 </body>
