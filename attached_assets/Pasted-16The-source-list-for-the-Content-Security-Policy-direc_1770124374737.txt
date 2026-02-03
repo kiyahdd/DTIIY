@@ -1,0 +1,240 @@
+16The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+16The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+16The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+b511f2fd16f01a49.js:2 [Coframe] Replit Enterprise watcher loaded
+DTIIY-Repl:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.Understand this error
+DTIIY-Repl:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?Understand this error
+DTIIY-Repl:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.Understand this error
+b511f2fd16f01a49.js:2 
+      /////////////////////
+   ///////////////////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////        Curious and driven?
+  ///////////////@@@@@@@///////        Work with us!
+  ///////////////@@@@@@@///////
+  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
+  ////////@@@@@@@//////////////
+  ////////@@@@@@@//////////////
+  ////////@@@@@@#//////////////
+   ///////////////////////////
+      /////////////////////
+      
+b511f2fd16f01a49.js:2 Download the Apollo DevTools for a better development experience: https://chrome.google.com/webstore/detail/apollo-client-developer-t/jdkknkkbebbapilgoeccciglkfbmbnfm
+b511f2fd16f01a49.js:2 [LaunchDarkly] LaunchDarkly client initialized
+b511f2fd16f01a49.js:2 [ai-chat] Creating connection with chat proxy enabled
+(anonymous) @ b511f2fd16f01a49.js:2Understand this warning
+DTIIY-Repl:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
+9a2446c69ceea6f9.js:2 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
+z @ 9a2446c69ceea6f9.js:2Understand this error
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'ambient-light-sensor'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'battery'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'execution-while-not-rendered'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'execution-while-out-of-viewport'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'layout-animations'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'legacy-image-formats'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'navigation-override'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'oversized-images'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'publickey-credentials'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'speaker-selection'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'unoptimized-images'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'unsized-media'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Unrecognized feature: 'pointer-lock'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Allow attribute will take precedence over 'allowfullscreen'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+9a2446c69ceea6f9.js:2 Allow attribute will take precedence over 'allowpaymentrequest'.
+z @ 9a2446c69ceea6f9.js:2Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this error
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'battery'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'layout-animations'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'legacy-image-formats'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'navigation-override'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'oversized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'publickey-credentials'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'speaker-selection'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'unoptimized-images'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Unrecognized feature: 'unsized-media'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warning
+workspace_iframe.html?initialPath=%2F&id=%3Ar21%3A:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warning
+injected.js:37 BULLETPROOF word limiter installed
+injected.js:37 🔧 [BUILD] FREE Cards Updated - Build 2025-11-05-01
+injected.js:37 🔧 [BUILD] Hella Sus label: "AI detectors are gonna lose it - time for the full glow-up ✨"
+injected.js:37 🔧 [BUILD] Kinda Sus label: "These sentences are lowkey cooked. Not on Lil' Sus's watch."
+injected.js:37 🔧 [BUILD] Kinda Sus color: #FFF000
+injected.js:37 [FFF] Build 2025-11-05-01 - if changes don't appear, run forceHardReload() in console
+injected.js:37 ✅ Auto-log capture enabled. After a hang, run: getDebugLogs() or downloadDebugLogs()
+injected.js:37 ✅ Button handlers defined
+injected.js:37 🚨 Checking for stuck modals/overlays...
+injected.js:37 === DOM LOADED - INITIALIZING EVENT LISTENERS ===
+injected.js:37 🗑️ Removing stuck message: proEmailSignupMessage
+injected.js:37 🗑️ Removing stuck message: quickfixStep3EmailSignupMessage
+injected.js:37 🗑️ Removing stuck message: rotatingMessage
+injected.js:37 🗑️ Removing stuck message: rescanChangeMessage
+injected.js:37 🗑️ Removing stuck message: cleanEssayLilSusMessage
+injected.js:37 ✅ Showing main dashboard (input section)
+injected.js:37 🔄 Page loaded - scan count from storage: 0
+injected.js:37 ✅ Drag-drop listeners attached
+injected.js:37 ✅ Button handlers are using inline onclick handlers
+injected.js:37 ✅ Start QuickFix button listener added
+injected.js:37 ✅ Apply QuickFixes button listener added
+injected.js:37 ✅ Apply All Fixes button listener added
+injected.js:37 ✅ Essay input found, attaching listeners
+injected.js:37 ✅ Essay input listeners attached successfully
+injected.js:37 === ALL EVENT LISTENERS INITIALIZED ===
+injected.js:37 📋 Page loaded - checking functions:
+injected.js:37   scanEssay: function
+injected.js:37   showQuickFixConfirmationModal: function
+injected.js:37   startProCTA: function
+injected.js:37   handleProUpgrade: function
+injected.js:37 👤 Free user - enabling all CTAs
+injected.js:37 🔄 Initial updateCounter call
+injected.js:37 📊 updateScansDisplay - scansUsed: 0 remaining: 50 button shows: 0
+injected.js:37 📝 Initial text check - length: 0
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 📝 Input event fired, length: 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+3injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 17 vs 120
+injected.js:37 📊 updateCounter - word count: 17 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 📝 Input event fired, length: 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+2injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+2injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔘 QuickFix button clicked
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+2injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+stallwart.build.js:1 stallwart: failed ping 1
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+stallwart.build.js:1 stallwart: failed ping 2
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240
+injected.js:37 📊 updateCounter - word count: 33 words, preview: In conclusion, it is important to note that techno...
+injected.js:37 🔧 Counter mismatch detected, fixing: 33 vs 240

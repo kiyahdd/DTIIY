@@ -3,69 +3,6 @@
 <html lang="en">
 
 <head>
-<script>
-// BULLETPROOF word limit - runs FIRST before any other JS
-(function() {
-  var LIMIT = 1500;
-  var processing = false;
-  
-  function truncateText(text) {
-    var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-    if (words.length > LIMIT) {
-      return words.slice(0, LIMIT).join(' ');
-    }
-    return text;
-  }
-  
-  document.addEventListener('input', function(e) {
-    if (processing) return;
-    var ta = e.target;
-    if (ta.tagName !== 'TEXTAREA') return;
-    if (!['essayInput', 'proScanInput', 'quickfixEssayInput'].includes(ta.id)) return;
-    
-    var text = ta.value || '';
-    var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-    
-    if (words.length > LIMIT) {
-      processing = true;
-      var truncated = words.slice(0, LIMIT).join(' ');
-      ta.value = truncated;
-      console.log('BULLETPROOF: Truncated to', LIMIT, 'words');
-      processing = false;
-    }
-  }, true); // capturing phase
-  
-  document.addEventListener('paste', function(e) {
-    var ta = e.target;
-    if (ta.tagName !== 'TEXTAREA') return;
-    if (!['essayInput', 'proScanInput', 'quickfixEssayInput'].includes(ta.id)) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    var clipboardData = e.clipboardData || window.clipboardData;
-    var pastedText = clipboardData.getData('text');
-    var currentText = ta.value;
-    var start = ta.selectionStart;
-    var end = ta.selectionEnd;
-    
-    var newText = currentText.substring(0, start) + pastedText + currentText.substring(end);
-    var words = newText.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-    
-    if (words.length > LIMIT) {
-      newText = words.slice(0, LIMIT).join(' ');
-      console.log('BULLETPROOF PASTE: Truncated to', LIMIT, 'words');
-    }
-    
-    ta.value = newText;
-    ta.dispatchEvent(new Event('input', { bubbles: true }));
-  }, true); // capturing phase
-  
-  console.log('BULLETPROOF word limiter installed');
-})();
-</script>
-
-
 <meta charset="UTF-8" />
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -43599,16 +43536,8 @@ window.updateCounter = function updateCounter() {
 
   if (len > 1500) {
     words = words.slice(0, 1500);
-    var truncatedText = words.join(' ');
-    console.log('TRUNCATING from', len, 'to 1500 words, new length:', truncatedText.length);
-    // Force the value change
-    essayInput.value = '';
-    essayInput.value = truncatedText;
-    // Also try setting via attribute
-    essayInput.setAttribute('value', truncatedText);
-    textValue = truncatedText;
+    essayInput.value = words.join(' ');
     len = 1500;
-    showSuccessMessage('Text limited to 1,500 words maximum.');
   }
 
 
@@ -61703,6 +61632,37 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
+
+<script>
+(function() {
+  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  
+  function forceSetValue(textarea, newValue) {
+    nativeInputValueSetter.call(textarea, newValue);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  
+  function enforceLimit() {
+    ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
+      var ta = document.getElementById(id);
+      if (!ta) return;
+      
+      var words = ta.value.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
+      if (words.length > 1500) {
+        var truncated = words.slice(0, 1500).join(' ');
+        forceSetValue(ta, truncated);
+        console.log('ENFORCED: Truncated', id, 'to 1500 words');
+      }
+    });
+  }
+  
+  // Run every 50ms
+  setInterval(enforceLimit, 50);
+  
+  console.log('Native value enforcer installed');
+})();
+</script>
 </body>
 
 </html> 
