@@ -17214,7 +17214,7 @@ function switchToQuickFix() {
 
     if (charCountEl) {
 
-      charCountEl.textContent = quickfixInput.value.length;
+      var qfWords = quickfixInput.value.trim().split(/\s+/).filter(function(w){return w.length>0}); charCountEl.textContent = qfWords.length.toLocaleString();
 
     }
 
