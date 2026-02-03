@@ -61634,36 +61634,41 @@ window.addEventListener('beforeunload', function() {
 
 
 
+
+
 <script>
 (function() {
-  var nativeInputValueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  var nativeSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+  var truncating = false;
   
-  function forceSetValue(textarea, newValue) {
-    nativeInputValueSetter.call(textarea, newValue);
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  function truncate(ta) {
+    if (truncating || !ta || !ta.value) return;
+    var words = ta.value.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
+    if (words.length > 1500) {
+      truncating = true;
+      var newVal = words.slice(0, 1500).join(' ');
+      nativeSetter.call(ta, newVal);
+      console.log('TRUNCATED to 1500 words, new char length:', newVal.length);
+      truncating = false;
+    }
   }
   
-  function enforceLimit() {
-    ['essayInput', 'proScanInput', 'quickfixEssayInput'].forEach(function(id) {
-      var ta = document.getElementById(id);
-      if (!ta || !ta.value) return;
-      
-      var text = ta.value;
-      var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; });
-      var wordCount = words.length;
-      
-      if (wordCount > 1500) {
-        console.log('ENFORCER: Found', id, 'with', wordCount, 'words, truncating...');
-        var truncated = words.slice(0, 1500).join(' ');
-        console.log('ENFORCER: Truncated text length:', truncated.length);
-        nativeInputValueSetter.call(ta, truncated);
-        console.log('ENFORCER: After set, textarea length:', ta.value.length);
-      }
-    });
-  }
+  document.addEventListener('paste', function(e) {
+    var ta = e.target;
+    if (ta.tagName !== 'TEXTAREA') return;
+    // Wait for paste to complete, then truncate
+    setTimeout(function() { truncate(ta); }, 50);
+    setTimeout(function() { truncate(ta); }, 100);
+    setTimeout(function() { truncate(ta); }, 200);
+  }, true);
   
-  setInterval(enforceLimit, 100);
-  console.log('Debug enforcer installed');
+  document.addEventListener('input', function(e) {
+    var ta = e.target;
+    if (ta.tagName !== 'TEXTAREA') return;
+    setTimeout(function() { truncate(ta); }, 10);
+  }, true);
+  
+  console.log('Delayed enforcer ready');
 })();
 </script>
 </body>
