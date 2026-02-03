@@ -17423,7 +17423,7 @@ function switchToPro() {
 
     if (charCountEl) {
 
-      charCountEl.textContent = `${proInput.value.length} / 1,500`;
+      let proWords = proInput.value.trim().split(/\s+/).filter(w => w.length > 0); if (proWords.length > 1500) { proInput.value = proWords.slice(0, 1500).join(' '); proWords = proWords.slice(0, 1500); } charCountEl.textContent = proWords.length.toLocaleString() + ' / 1,500';
 
     }
 
@@ -52605,7 +52605,7 @@ function showProDashboard() {
 
         if (countEl) {
 
-          countEl.textContent = count.toLocaleString() + '/5,000';
+          let proWc = (document.getElementById('proScanInput').value || '').trim().split(/\s+/).filter(w => w.length > 0).length; countEl.textContent = Math.min(proWc, 1500).toLocaleString() + ' / 1,500';
 
         }
 
@@ -52887,7 +52887,7 @@ function showProWelcomeModal(isUpgrade = false) {
 
           <div class="pro-feature-icon" style="font-size: 36px; margin-bottom: 10px;">📝</div>
 
-          <div class="pro-feature-title" style="color: #0b0646; margin: 0 0 8px; font-size: 16px; font-weight: 700;">5,000 Characters</div>
+          <div class="pro-feature-title" style="color: #0b0646; margin: 0 0 8px; font-size: 16px; font-weight: 700;">1,500 Words</div>
 
           <div class="pro-feature-desc" style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0;">Scan full assignments and reports with expanded character limits.</div>
 
@@ -56077,7 +56077,7 @@ function backToProDashboard() {
 
     if (proCharCount) {
 
-      proCharCount.textContent = '0/5,000';
+      proCharCount.textContent = '0 / 1,500';
 
     }
 
