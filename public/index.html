@@ -8911,6 +8911,9 @@ body.modal-open .input-section {
               ⚠️ Copy Anyway (<span id="copyRiskPercent">0</span>% risk)
 
             </button>
+            <button onclick="downloadAsPDF('main')" title="Download as PDF" style="background: #6b7280; color: white; border: none; border-radius: 8px; padding: 12px 16px; font-size: 16px; cursor: pointer; margin-left: 8px; transition: all 0.2s;" onmouseover="this.style.background='#4b5563';" onmouseout="this.style.background='#6b7280';">
+              📄 PDF
+            </button>
 
           </div>
 
@@ -14607,7 +14610,7 @@ function getDynamicCTAs(score) {
 
     ctas = 
 
-      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button>
+      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button> <button class="btn-secondary" onclick="downloadAsPDF('quickfix')" style="background: #6b7280; margin-left: 8px;">📄 PDF</button>
 
       <button class="btn-outline" onclick="showProUpsell()">💎 Go Pro</button>
 
@@ -14619,7 +14622,7 @@ function getDynamicCTAs(score) {
 
     ctas = 
 
-      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button>
+      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button> <button class="btn-secondary" onclick="downloadAsPDF('quickfix')" style="background: #6b7280; margin-left: 8px;">📄 PDF</button>
 
       <button class="btn-outline" onclick="scanNewText()">📝 Scan Another Essay</button>
 
@@ -14629,7 +14632,7 @@ function getDynamicCTAs(score) {
 
     ctas = 
 
-      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button>
+      `<button class="btn-primary" onclick="copyQuickFixResult()">✅ Copy Fixed Text</button> <button class="btn-secondary" onclick="downloadAsPDF('quickfix')" style="background: #6b7280; margin-left: 8px;">📄 PDF</button>
 
       <button class="btn-outline" onclick="scanNewText()">📝 Scan Another Essay</button>
 
@@ -34780,6 +34783,61 @@ window.addEventListener('click', function(event) {
 
 
 // Copy essay to clipboard (plain text from textarea)
+
+// Download essay as PDF
+function downloadAsPDF(elementId) {
+  let text = '';
+  
+  // Get text based on context
+  if (elementId === 'quickfix') {
+    text = document.getElementById('quickfixEssayInput')?.value || 
+           document.getElementById('quickfixStep3EssayPreview')?.innerText || '';
+  } else if (elementId === 'proscan') {
+    text = document.getElementById('proScanInput')?.value || '';
+  } else {
+    text = document.getElementById('essayInput')?.value || '';
+  }
+  
+  if (!text.trim()) {
+    alert('No text to download!');
+    return;
+  }
+  
+  // Create a printable HTML document
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Essay - False Flag Fixer</title>
+      <style>
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 12pt;
+          line-height: 1.6;
+          max-width: 8.5in;
+          margin: 1in auto;
+          padding: 0 0.5in;
+          color: #000;
+        }
+        @media print {
+          body { margin: 0; padding: 0.5in; }
+        }
+      </style>
+    </head>
+    <body>
+      <pre style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit;">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+      <script>
+        window.onload = function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 100);
+        };
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
 
 async function copyEssay() {
 
