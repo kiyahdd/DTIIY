@@ -265,6 +265,39 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <style>
+/* CTA Button Tooltips */
+.cta-tooltip {
+  position: relative;
+}
+.cta-tooltip::after {
+  content: attr(data-tooltip-text);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #374151;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  margin-bottom: 8px;
+  border: 2px solid #10b981;
+}
+.cta-tooltip[data-tooltip-color="green"]::after { border-color: #10b981; }
+.cta-tooltip[data-tooltip-color="orange"]::after { border-color: #f97316; }
+.cta-tooltip[data-tooltip-color="blue"]::after { border-color: #0077b6; }
+.cta-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 
 /* ALL YOUR EXISTING CSS STYLES REMAIN EXACTLY THE SAME */
 
@@ -12117,9 +12150,9 @@ body.modal-open .input-section {
 
       <textarea id="essayInput" placeholder="Paste your essay here (minimum 50 words)..." onchange="if(typeof updateCounter === 'function') updateCounter();" style="white-space: pre-wrap;"></textarea>
 
-      <div class="char-counter" style="text-align: right; margin: 8px 0; color: #6b7280; font-size: 14px;"><span id="charCount">0</span> / 1,500 words</div>
-
-      <p style="text-align: center; margin: 8px 0 0 0; padding: 0 20px; color: #6b7280; font-size: 13px; line-height: 1.5;">🔒 Private & secure. Your essay isn't seen, stored or shared.</p>
+      <div class="char-counter" style="text-align: right; margin: 8px 0 0 0; color: #6b7280; font-size: 14px;"><span id="charCount">0</span> / 1,500 words</div>
+      <p style="text-align: center; margin: 2px 0 0 0; color: #9ca3af; font-size: 12px;">Free scans up to 500 words • QuickFix & Pro: up to 1,500</p>
+      <p style="text-align: center; margin: 12px 0 0 0; padding: 0 20px; color: #6b7280; font-size: 13px; line-height: 1.5;">🔒 Private & secure. Your essay isn't seen, stored or shared.</p>
 
 
 
@@ -12261,41 +12294,23 @@ body.modal-open .input-section {
 
 
 
-      <div class="button-group" style="display: flex !important; gap: 16px !important; margin-top: 20px; justify-content: center !important; flex-wrap: nowrap !important;">
-
-        <button id="scanButton" type="button" class="btn-primary" onclick="handleScanClick(event);">🔍 Free Scan (<span id="scanCounter">1/3</span>)</button>
-
-        <button id="emergencyButton" type="button" class="btn-secondary"
-
-                data-tooltip="Find ALL AI-trigger words and fix them - $1.99. Scan up to 1,500 words."
-
-                onclick="handleQuickFixClick(event);"><span style="color: #ffffff !important; display: inline-block; text-shadow: -1px -1px 0px #ffffff, 1px -1px 0px #ffffff, -1px 1px 0px #ffffff, 1px 1px 0px #ffffff, 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.6); filter: brightness(1) !important; font-weight: bold; -webkit-text-stroke: 1px #ffffff; text-stroke: 1px #ffffff;">⚡</span> QuickFix ($1.99)</button>
-
-        <button id="proButton" type="button" class="btn-success"
-
-                data-tooltip="100 monthly scans + fixes - $9.99/month. Scan up to 1,500 words."
-
-                onclick="handleProClick(event);">💎 False Flag Fixer™ Pro ($9.99/mo)</button>
-
+      <div id="mainCtaButtons" style="display: flex !important; flex-direction: column !important; width: 100% !important; gap: 12px !important; margin-top: 20px !important;">
+        <button id="scanButton" type="button" class="cta-tooltip" data-tooltip-text="Scan 500 words, no signup needed" data-tooltip-color="green" style="width: 100% !important; display: block !important; padding: 14px 24px !important; background: #2ecc71 !important; color: white !important; border: none !important; border-radius: 8px !important; font-size: 16px !important; font-weight: 600 !important; cursor: pointer !important;" onclick="handleScanClick(event);">🔍 Free Scan (<span id="scanCounter">1/3</span>)</button>
+        <button id="emergencyButton" type="button" class="cta-tooltip" data-tooltip-text="One Pro-level 1500 word full essay fix + bonus" data-tooltip-color="orange" style="width: 100% !important; display: block !important; padding: 14px 24px !important; background: #f97316 !important; color: white !important; border: none !important; border-radius: 8px !important; font-size: 16px !important; font-weight: 600 !important; cursor: pointer !important;" onclick="handleQuickFixClick(event);"><span style="filter: brightness(0) invert(1);">⚡</span> QuickFix ($1.99)</button>
+        <button id="proButton" type="button" class="cta-tooltip" data-tooltip-text="100 scans/month • 1,500 words each • Full history • Cancel anytime" data-tooltip-color="blue" style="width: 100% !important; display: block !important; padding: 14px 24px !important; background: #0077b6 !important; color: white !important; border: none !important; border-radius: 8px !important; font-size: 16px !important; font-weight: 600 !important; cursor: pointer !important;" onclick="handleProClick(event);">💎 False Flag Fixer™ Pro ($9.99/mo)</button>
       </div>
-
-
 
       <div style="text-align:center; margin-top:12px;">
 
         <p style="font-size:11px; color:#9ca3af; line-height:1.3;">
 
-          QuickFix™ fixes this essay completely ($1.99 one-time) • Pro includes 100 monthly scans up to 1,500 words each and can be cancelled anytime
+          One-time or monthly options • Secure payment by <span style="color: #635bff; font-weight: 600;">Stripe</span>
 
         </p>
 
       </div>
 
-      <div class="stripe-badge">
 
-        Secure payment by <span class="stripe-logo">Stripe</span>
-
-      </div>
 
     </div>
 
@@ -62395,6 +62410,31 @@ if (typeof originalShowProDashboard === 'function') {
     }, 500);
   };
 }
+</script>
+
+<script>
+// Ensure CTA buttons always stay visible
+(function() {
+  function ensureButtonsVisible() {
+    const container = document.getElementById('mainCtaButtons');
+    if (container) {
+      container.style.cssText = 'display: flex !important; flex-direction: column !important; width: 100% !important; gap: 12px !important; margin-top: 20px !important;';
+    }
+    const scanBtn = document.getElementById('scanButton');
+    const emergencyBtn = document.getElementById('emergencyButton');
+    const proBtn = document.getElementById('proButton');
+    [scanBtn, emergencyBtn, proBtn].forEach(btn => {
+      if (btn && btn.closest('#mainCtaButtons')) {
+        btn.style.display = 'block';
+        btn.style.visibility = 'visible';
+        btn.style.opacity = '1';
+      }
+    });
+  }
+  // Run on load and periodically
+  document.addEventListener('DOMContentLoaded', ensureButtonsVisible);
+  setInterval(ensureButtonsVisible, 500);
+})();
 </script>
 </body>
 
